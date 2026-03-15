@@ -12,10 +12,16 @@
     </div>
     <div class="sidebar-menu-area">
         <ul class="sidebar-menu" id="sidebar-menu">
-            <li class="{{ Route::currentRouteName() == 'task.dashboard' ? 'active-page' : '' }}">
-                <a href="{{ route('lms.dashboard') }}" class="{{ Route::currentRouteName() == 'task.dashboard' ? 'active-page' : '' }}">
+            <li class="{{ Route::currentRouteName() == 'lms.dashboard' ? 'active-page' : '' }}">
+                <a href="{{ route('lms.dashboard') }}" class="{{ Route::currentRouteName() == 'lms.dashboard' ? 'active-page' : '' }}">
                     <iconify-icon icon="solar:home-2-outline" class="menu-icon"></iconify-icon>
                     <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="{{ Route::currentRouteName() == 'lms.dashboard' ? 'active-page' : '' }}">
+                <a href="{{ route('lms.dashboard') }}" class="{{ Route::currentRouteName() == 'lms.dashboard' ? 'active-page' : '' }}">
+                    <iconify-icon icon="solar:home-2-outline" class="menu-icon"></iconify-icon>
+                    <span>Leads</span>
                 </a>
             </li>
             

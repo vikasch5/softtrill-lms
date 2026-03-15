@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Lms\AuthController;
 use App\Http\Controllers\Lms\DashboardController;
+use App\Http\Controllers\Lms\LeadController;
 use App\Http\Controllers\Lms\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -17,5 +18,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/user-add/{id?}', [UserController::class, 'usersAdd'])->name('lms.users.add');
     Route::post('/user-save', [UserController::class, 'storeOrUpdate'])->name('lms.users.store');
     Route::post('/user-delete', [UserController::class, 'delete'])->name('lms.users.delete');
+    Route::get('/field-add/{id?}', [LeadController::class, 'fieldAddIndex'])->name('lms.users.delete');
+    Route::get('/field-save', [LeadController::class, 'fieldAddIndex'])->name('lms.lead-fields.store');
+    Route::get('/user-delete', [UserController::class, 'delete'])->name('lms.users.delete');
     Route::get('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 });

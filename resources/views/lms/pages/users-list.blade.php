@@ -61,7 +61,7 @@
                                                     @endphp
 
                                                     <img style="width:50px;height:50px;object-fit:cover"
-                                                        src="{{ $photo ? asset('storage/'. $photo) : asset('images/default-user.png') }}"
+                                                        src="{{ $photo ? asset('storage/' . $photo) : asset('images/default-user.png') }}"
                                                         alt="Image" class="radius-8 me-12">
 
                                                     <div class="flex-grow-1">
@@ -84,23 +84,24 @@
 
 
                                             {{-- ROLE --}}
-                                           <td>
+                                            <td>
 
-@php
-$role = $user->getRoleNames()->first();
-@endphp
+                                                @php
+                                                    $role = $user->getRoleNames()->first();
+                                                @endphp
 
-<span class="bg-success-focus text-success-main px-24 py-4 rounded-pill text-sm">
-    {{ $role ?? 'N/A' }}
-</span>
+                                                <span
+                                                    class="bg-success-focus text-success-main px-24 py-4 rounded-pill text-sm">
+                                                    {{ $role ?? 'N/A' }}
+                                                </span>
 
-</td>
+                                            </td>
                                             <td>{{ optional(optional(optional($user)->details)->cluster)->name }}</td>
                                             <td>{{ optional(optional(optional($user)->details)->manager)->name }}</td>
                                             <td>{{ optional(optional(optional($user)->details)->teamleader)->name }}</td>
 
 
-                                           
+
                                             {{-- ACCOUNT STATUS --}}
                                             <td>
 
