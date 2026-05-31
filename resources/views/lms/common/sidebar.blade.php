@@ -18,10 +18,16 @@
                     <span>Dashboard</span>
                 </a>
             </li>
-            <li class="{{ Route::currentRouteName() == 'lms.dashboard' ? 'active-page' : '' }}">
-                <a href="{{ route('lms.dashboard') }}" class="{{ Route::currentRouteName() == 'lms.dashboard' ? 'active-page' : '' }}">
+            <li class="{{ Route::currentRouteName() == 'lms.leads.add' ? 'active-page' : '' }}">
+                <a href="{{ route('lms.leads.add') }}" class="{{ Route::currentRouteName() == 'lms.leads.add' ? 'active-page' : '' }}">
                     <iconify-icon icon="solar:home-2-outline" class="menu-icon"></iconify-icon>
                     <span>Leads</span>
+                </a>
+            </li>
+            <li class="{{ Route::currentRouteName() == 'lms.lead-fields.list' ? 'active-page' : '' }}">
+                <a href="{{ route('lms.lead-fields.list') }}" class="{{ Route::currentRouteName() == 'lms.lead-fields.list' ? 'active-page' : '' }}">
+                    <iconify-icon icon="solar:home-2-outline" class="menu-icon"></iconify-icon>
+                    <span>Fields</span>
                 </a>
             </li>
             

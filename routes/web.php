@@ -18,8 +18,15 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/user-add/{id?}', [UserController::class, 'usersAdd'])->name('lms.users.add');
     Route::post('/user-save', [UserController::class, 'storeOrUpdate'])->name('lms.users.store');
     Route::post('/user-delete', [UserController::class, 'delete'])->name('lms.users.delete');
-    Route::get('/field-add/{id?}', [LeadController::class, 'fieldAddIndex'])->name('lms.users.delete');
-    Route::get('/field-save', [LeadController::class, 'fieldAddIndex'])->name('lms.lead-fields.store');
-    Route::get('/user-delete', [UserController::class, 'delete'])->name('lms.users.delete');
+    Route::get('/field-list', [LeadController::class, 'fieldList'])->name('lms.lead-fields.list');
+    Route::get('/field-add/{id?}', [LeadController::class, 'fieldAddIndex'])->name('lms.lead-fields.add');
+    Route::post('/field-save', [LeadController::class, 'fieldStoreOrUpdate'])->name('lms.lead-fields.store');
+    Route::delete('/field-delete', [LeadController::class, 'delete'])->name('lms.lead-fields.delete');
+    Route::get('/lead-import', [LeadController::class, 'leadImport'])->name('lms.lead.import');
+    Route::post('/lead-import', [LeadController::class, 'import'])->name('lms.leads.import.save');
+    Route::get('/lead-sample', [LeadController::class, 'downloadSample'])->name('lms.leads.sample');
+    Route::get('/lead-add/{id?}', [LeadController::class, 'leadAdd'])->name('lms.leads.add');
+    Route::post('/lead-save', [LeadController::class, 'storeOrUpdate'])->name('lms.leads.store');
+
     Route::get('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 });

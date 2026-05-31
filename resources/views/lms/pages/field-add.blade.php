@@ -2,166 +2,196 @@
 
 @section('content')
 
-<div class="dashboard-main-body">
-<div class="row">
-<div class="col-lg-12">
+    <div class="dashboard-main-body">
+        <div class="row">
+            <div class="col-lg-12">
 
-<div class="card shadow-sm border-0">
+                <div class="card shadow-sm border-0">
 
-<div class="card-header d-flex justify-content-between align-items-center">
-<h5 class="mb-0">Create Custom Lead Fields</h5>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Custom Lead Fields</h5>
 
-<button type="button" class="btn btn-success" id="addRow">
-<i class="ri-add-line"></i> Add Field
-</button>
+                        <button type="button" class="btn btn-success" id="addRow">
+                            <i class="ri-add-line"></i> Add Field
+                        </button>
+                    </div>
 
-</div>
+                    <div class="card-body">
 
-<div class="card-body">
+                        <form class="ajaxForm" action="{{ route('lms.lead-fields.store') }}" method="POST">
+                            @csrf
+                            <div id="fieldsContainer">
 
-<form action="{{ route('lms.lead-fields.store') }}" method="POST" class="ajaxForm">
-@csrf
+                                @php
+                                    $fieldsData = $fields ?? [null]; // for create → 1 empty row
+                                @endphp
 
-<!-- Table Header -->
+                                @foreach($fieldsData as $index => $field)
+                                    @php
+                                    var_dump($field);
+                                    @endphp
 
-<div class="row fw-semibold text-muted mb-3">
+                                    <div class="field-row border rounded p-3 mb-3 bg-light">
 
-<div class="col-md-2">Field Name</div>
-<div class="col-md-3">Label</div>
-<div class="col-md-2">Field Type</div>
-<div class="col-md-2">Sort Order</div>
-<div class="col-md-1 text-center">Required</div>
-<div class="col-md-2 text-center">Action</div>
+                                        <input type="hidden" name="fields[{{ $index }}][id]" value="{{ $field->id ?? '' }}">
 
-</div>
+                                        <div class="row g-3 align-items-end">
 
-<div id="fieldsContainer">
+                                            <!-- LABEL -->
+                                            <div class="col-md-3">
+                                                <label class="fw-semibold">Field Label</label>
+                                                <input type="text" name="fields[{{ $index }}][name]"
+                                                    value="{{ $field->name ?? '' }}"
+                                                    class="form-control form-control-sm required" placeholder="e.g. PAN Number">
+                                            </div>
 
-<div class="row align-items-center mb-3 field-row">
+                                            <!-- TYPE -->
+                                            <div class="col-md-3">
+                                                <label class="fw-semibold">Field Type</label>
+                                                <select name="fields[{{ $index }}][type]"
+                                                    class="form-control form-control-sm required">
 
-<div class="col-md-2">
-<input type="text" name="fields[0][field_name]" class="form-control" placeholder="pan">
-</div>
+                                                    <option value="text" {{ ($field->type ?? '') == 'text' ? 'selected' : '' }}>
+                                                        Text</option>
+                                                    <option value="number" {{ ($field->type ?? '') == 'number' ? 'selected' : '' }}>Number</option>
+                                                    <option value="date" {{ ($field->type ?? '') == 'date' ? 'selected' : '' }}>
+                                                        Date</option>
+                                                    <option value="select" {{ ($field->type ?? '') == 'select' ? 'selected' : '' }}>Dropdown</option>
 
-<div class="col-md-3">
-<input type="text" name="fields[0][label]" class="form-control" placeholder="PAN Number">
-</div>
+                                                </select>
+                                            </div>
 
-<div class="col-md-2">
-<select name="fields[0][field_type]" class="form-control">
-<option value="text">Text</option>
-<option value="number">Number</option>
-<option value="date">Date</option>
-<option value="select">Select</option>
-<option value="textarea">Textarea</option>
-<option value="boolean">Yes/No</option>
-</select>
-</div>
+                                            <!-- OPTIONS -->
+                                            <div
+                                                class="col-md-4 options-wrapper {{ ($field->type ?? '') == 'select' ? '' : 'd-none' }}">
+                                                <label class="fw-semibold">Dropdown Options</label>
 
-<div class="col-md-2">
-<input type="number" name="fields[0][sort_order]" class="form-control" value="0">
-</div>
+                                                <input type="text" name="fields[{{ $index }}][options]"
+                                                    value="{{ isset($field->options) ? implode(',', json_decode($field->options, true)) : '' }}"
+                                                    class="form-control form-control-sm"
+                                                    placeholder="e.g. Delhi, Mumbai, Noida">
+                                            </div>
 
-<div class="col-md-1 text-center">
+                                            <!-- SORT -->
+                                            <div class="col-md-2">
+                                                <label class="fw-semibold">Order</label>
+                                                <input type="number" name="fields[{{ $index }}][sort_order]"
+                                                    value="{{ $field->sort_order ?? 0 }}" class="form-control form-control-sm">
+                                            </div>
 
-<div class="form-check">
-<input class="form-check-input" type="checkbox" name="fields[0][is_required]" value="1">
-</div>
+                                            <!-- SWITCHES -->
+                                            <div class="col-md-3">
+                                                <div class="row g-2">
 
-</div>
+                                                    <!-- Required -->
+                                                    <div class="col-4">
+                                                        <label class="small fw-semibold">Required</label>
+                                                        <select name="fields[{{ $index }}][is_required]"
+                                                            class="form-select form-control-sm">
+                                                            <option value="0" {{ ($field->is_required ?? 0) == 0 ? 'selected' : '' }}>No</option>
+                                                            <option value="1" {{ ($field->is_required ?? 0) == 1 ? 'selected' : '' }}>Yes</option>
+                                                        </select>
+                                                    </div>
 
-<div class="col-md-2 text-center">
+                                                    <!-- Filter -->
+                                                    <div class="col-4">
+                                                        <label class="small fw-semibold">Filter</label>
+                                                        <select name="fields[{{ $index }}][is_filterable]"
+                                                            class="form-select form-control-sm">
+                                                            <option value="0" {{ ($field->is_filterable ?? 0) == 0 ? 'selected' : '' }}>No</option>
+                                                            <option value="1" {{ ($field->is_filterable ?? 0) == 1 ? 'selected' : '' }}>Yes</option>
+                                                        </select>
+                                                    </div>
 
-<button type="button" class="btn btn-danger removeRow">
-<i class="ri-delete-bin-line"></i>
-</button>
+                                                    <!-- Promote -->
+                                                    <div class="col-4">
+                                                        <label class="small fw-semibold">Promote</label>
+                                                        <select name="fields[{{ $index }}][is_promoted]"
+                                                            class="form-select form-control-sm">
+                                                            <option value="0" {{ ($field->is_promoted ?? 0) == 0 ? 'selected' : '' }}>No</option>
+                                                            <option value="1" {{ ($field->is_promoted ?? 0) == 1 ? 'selected' : '' }}>Yes</option>
+                                                        </select>
+                                                    </div>
 
-</div>
+                                                </div>
+                                            </div>
 
-</div>
+                                            <!-- DELETE -->
+                                            <div class="col-md-1">
+                                                <button type="button" class="btn btn-danger btn-sm w-100 removeRow">
+                                                    <i class="ri-delete-bin-line"></i>
+                                                </button>
+                                            </div>
 
-</div>
+                                        </div>
 
-<div class="mt-4">
-<button type="submit" class="btn btn-primary">
-<i class="ri-save-line"></i> Save Fields
-</button>
-</div>
+                                    </div>
 
-</form>
+                                @endforeach
 
-</div>
-</div>
+                            </div>
 
-</div>
-</div>
-</div>
+                            <button type="submit" class="btn btn-primary mt-2">
+                                Save Fields
+                            </button>
+
+                        </form>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
 
 @endsection
 
 @section('scripts')
+    <script>
+        $(document).ready(function () {
 
-<script>
+            let rowIndex = {{ isset($fields) ? count($fields) : 1 }};
 
-$(document).ready(function(){
+            $('#addRow').click(function () {
 
-let rowIndex = 1
+                let html = $('.field-row:first').clone();
 
-$('#addRow').click(function(){
+                html.find('input, select').each(function () {
 
-let html = `
-<div class="row align-items-center mb-3 field-row">
+                    let name = $(this).attr('name');
+                    name = name.replace(/\[\d+\]/, '[' + rowIndex + ']');
 
-<div class="col-md-2">
-<input type="text" name="fields[${rowIndex}][field_name]" class="form-control">
-</div>
+                    $(this).attr('name', name).val('');
+                });
 
-<div class="col-md-3">
-<input type="text" name="fields[${rowIndex}][label]" class="form-control">
-</div>
+                html.find('input[type=checkbox]').prop('checked', false);
+                html.find('.options-wrapper').addClass('d-none');
 
-<div class="col-md-2">
-<select name="fields[${rowIndex}][field_type]" class="form-control">
-<option value="text">Text</option>
-<option value="number">Number</option>
-<option value="date">Date</option>
-<option value="select">Select</option>
-<option value="textarea">Textarea</option>
-<option value="boolean">Yes/No</option>
-</select>
-</div>
+                $('#fieldsContainer').append(html);
 
-<div class="col-md-2">
-<input type="number" name="fields[${rowIndex}][sort_order]" class="form-control" value="0">
-</div>
+                rowIndex++;
+            });
 
-<div class="col-md-1 text-center">
-<div class="form-check">
-<input class="form-check-input" type="checkbox" name="fields[${rowIndex}][is_required]" value="1">
-</div>
-</div>
+            $(document).on('click', '.removeRow', function () {
+                $(this).closest('.field-row').remove();
+            });
 
-<div class="col-md-2 text-center">
-<button type="button" class="btn btn-danger removeRow">
-<i class="ri-delete-bin-line"></i>
-</button>
-</div>
+            $('[data-bs-toggle="tooltip"]').tooltip();
 
-</div>
-`
+        });
 
-$('#fieldsContainer').append(html)
+        $(document).on('change', 'select[name*="[type]"]', function () {
 
-rowIndex++
+            let type = $(this).val();
 
-})
+            let row = $(this).closest('.field-row');
 
-$(document).on('click','.removeRow',function(){
-$(this).closest('.field-row').remove()
-})
+            if (type === 'select') {
+                row.find('.options-wrapper').removeClass('d-none');
+            } else {
+                row.find('.options-wrapper').addClass('d-none');
+            }
 
-})
-
-</script>
-
+        });
+    </script>
 @endsection

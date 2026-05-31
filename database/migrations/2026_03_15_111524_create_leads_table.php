@@ -11,38 +11,44 @@ return new class extends Migration {
 
             $table->id();
 
-            // Reference import file
+            // SaaS isolation (REQUIRED)
+            $table->unsignedBigInteger('tenant_id');
+
+            // Source tracking (optional but useful)
             $table->foreignId('lead_import_file_id')
                 ->nullable()
                 ->constrained('lead_import_files')
                 ->nullOnDelete();
 
-            // Basic fields
+            // Core identity (MASTER DATA)
             $table->string('name')->nullable();
-            $table->string('phone')->index();
-            $table->string('email')->nullable()->index();
+            $table->string('phone');
+            $table->string('email')->nullable();
+
+            // Basic info (global only)
             $table->text('address')->nullable();
+            $table->string('city')->nullable();
 
-            // Lead management
-            $table->string('status')->default('new');
+            // Non-filterable extra data
+            $table->json('custom_fields')->nullable();
 
-            $table->foreignId('assigned_to')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
-
+            // Audit
             $table->foreignId('created_by')
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();
 
-            // Dynamic fields
-            $table->json('custom_fields')->nullable();
-
             $table->timestamps();
+            $table->softDeletes();
 
-            // Performance indexes
-            $table->index(['phone', 'email']);
+            // Indexes
+            $table->index('tenant_id');
+            $table->index('phone');
+            $table->index('email');
+            $table->index(['tenant_id', 'created_at']);
+
+            // VERY IMPORTANT: prevent duplicates per tenant
+            $table->unique(['tenant_id', 'phone']);
         });
     }
 

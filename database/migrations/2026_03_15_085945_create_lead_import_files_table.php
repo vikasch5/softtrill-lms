@@ -11,18 +11,23 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('lead_import_files', function (Blueprint $table) {
-
             $table->id();
+            $table->string('list_code')->unique();
+            $table->unsignedBigInteger('tenant_id')->nullable()->index();
+            $table->string('list_name');
             $table->string('file_name');
             $table->string('original_name');
-            $table->integer('total_records')->nullable();
+            $table->integer('total_records')->default(0);
+            $table->integer('imported_records')->default(0);
+            $table->integer('failed_records')->default(0);
+            $table->enum('status', ['processing', 'completed', 'failed'])
+                ->default('processing')
+                ->index();
             $table->foreignId('uploaded_by')
                 ->constrained('users')
                 ->cascadeOnDelete();
-            $table->enum('status', ['processing', 'completed', 'failed'])
-                ->default('processing');
             $table->timestamps();
-
+            $table->index(['tenant_id', 'status']);
         });
     }
 
