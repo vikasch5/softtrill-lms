@@ -8,15 +8,15 @@ class LeadImportFile extends Model
 {
     protected $fillable = [
         'id',
-        'list_code',
+        'added_by',
         'tenant_id',
-        'list_name',
+        'list_id',
         'file_name',
         'original_name',
         'total_records',
         'imported_records',
         'failed_records',
         'status',
-        'uploaded_by',
+        'uploaded_by'
     ];
 }

@@ -11,123 +11,178 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Custom Lead Fields</h5>
 
-                        <button type="button" class="btn btn-success" id="addRow">
-                            <i class="ri-add-line"></i> Add Field
-                        </button>
+                        <div class="top-btn">
+                            <a href="{{ route('lms.lead-fields.list') }}" class="btn btn-outline-primary">
+                                <i class="ri-eye-line"></i> View Fields
+                            </a>
+                            <button type="button" class="btn btn-success" id="addRow">
+                                <i class="ri-add-line"></i> Add Field
+                            </button>
+                        </div>
                     </div>
 
                     <div class="card-body">
 
                         <form class="ajaxForm" action="{{ route('lms.lead-fields.store') }}" method="POST">
                             @csrf
+                            <input type="hidden" name="list_id" value="{{ $list->id ?? '' }}">
                             <div id="fieldsContainer">
 
-                                @php
-                                    $fieldsData = $fields ?? [null]; // for create → 1 empty row
-                                @endphp
 
-                                @foreach($fieldsData as $index => $field)
-                                    @php
-                                    var_dump($field);
-                                    @endphp
+@foreach($fieldsData as $index => $field)
 
-                                    <div class="field-row border rounded p-3 mb-3 bg-light">
+<div class="field-row border rounded p-3 mb-3 bg-light">
 
-                                        <input type="hidden" name="fields[{{ $index }}][id]" value="{{ $field->id ?? '' }}">
+    <input type="hidden"
+        name="fields[{{ $index }}][id]"
+        value="{{ $field->id }}">
 
-                                        <div class="row g-3 align-items-end">
+    <div class="row g-3">
 
-                                            <!-- LABEL -->
-                                            <div class="col-md-3">
-                                                <label class="fw-semibold">Field Label</label>
-                                                <input type="text" name="fields[{{ $index }}][name]"
-                                                    value="{{ $field->name ?? '' }}"
-                                                    class="form-control form-control-sm required" placeholder="e.g. PAN Number">
-                                            </div>
+        <div class="col-md-3">
+            <label>Field Label</label>
 
-                                            <!-- TYPE -->
-                                            <div class="col-md-3">
-                                                <label class="fw-semibold">Field Type</label>
-                                                <select name="fields[{{ $index }}][type]"
-                                                    class="form-control form-control-sm required">
+            <input type="text"
+                name="fields[{{ $index }}][name]"
+                value="{{ $field->name }}"
+                class="form-control required">
+        </div>
 
-                                                    <option value="text" {{ ($field->type ?? '') == 'text' ? 'selected' : '' }}>
-                                                        Text</option>
-                                                    <option value="number" {{ ($field->type ?? '') == 'number' ? 'selected' : '' }}>Number</option>
-                                                    <option value="date" {{ ($field->type ?? '') == 'date' ? 'selected' : '' }}>
-                                                        Date</option>
-                                                    <option value="select" {{ ($field->type ?? '') == 'select' ? 'selected' : '' }}>Dropdown</option>
+        <div class="col-md-2">
 
-                                                </select>
-                                            </div>
+            <label>Type</label>
 
-                                            <!-- OPTIONS -->
-                                            <div
-                                                class="col-md-4 options-wrapper {{ ($field->type ?? '') == 'select' ? '' : 'd-none' }}">
-                                                <label class="fw-semibold">Dropdown Options</label>
+            <select
+                name="fields[{{ $index }}][type]"
+                class="form-control field-type">
 
-                                                <input type="text" name="fields[{{ $index }}][options]"
-                                                    value="{{ isset($field->options) ? implode(',', json_decode($field->options, true)) : '' }}"
-                                                    class="form-control form-control-sm"
-                                                    placeholder="e.g. Delhi, Mumbai, Noida">
-                                            </div>
+                @foreach([
+                    'text',
+                    'textarea',
+                    'email',
+                    'phone',
+                    'number',
+                    'decimal',
+                    'date',
+                    'datetime',
+                    'select',
+                    'checkbox',
+                    'radio',
+                    'boolean'
+                ] as $type)
 
-                                            <!-- SORT -->
-                                            <div class="col-md-2">
-                                                <label class="fw-semibold">Order</label>
-                                                <input type="number" name="fields[{{ $index }}][sort_order]"
-                                                    value="{{ $field->sort_order ?? 0 }}" class="form-control form-control-sm">
-                                            </div>
+                    <option
+                        value="{{ $type }}"
+                        {{ $field->type == $type ? 'selected' : '' }}>
+                        {{ ucfirst($type) }}
+                    </option>
 
-                                            <!-- SWITCHES -->
-                                            <div class="col-md-3">
-                                                <div class="row g-2">
+                @endforeach
 
-                                                    <!-- Required -->
-                                                    <div class="col-4">
-                                                        <label class="small fw-semibold">Required</label>
-                                                        <select name="fields[{{ $index }}][is_required]"
-                                                            class="form-select form-control-sm">
-                                                            <option value="0" {{ ($field->is_required ?? 0) == 0 ? 'selected' : '' }}>No</option>
-                                                            <option value="1" {{ ($field->is_required ?? 0) == 1 ? 'selected' : '' }}>Yes</option>
-                                                        </select>
-                                                    </div>
+            </select>
 
-                                                    <!-- Filter -->
-                                                    <div class="col-4">
-                                                        <label class="small fw-semibold">Filter</label>
-                                                        <select name="fields[{{ $index }}][is_filterable]"
-                                                            class="form-select form-control-sm">
-                                                            <option value="0" {{ ($field->is_filterable ?? 0) == 0 ? 'selected' : '' }}>No</option>
-                                                            <option value="1" {{ ($field->is_filterable ?? 0) == 1 ? 'selected' : '' }}>Yes</option>
-                                                        </select>
-                                                    </div>
+        </div>
 
-                                                    <!-- Promote -->
-                                                    <div class="col-4">
-                                                        <label class="small fw-semibold">Promote</label>
-                                                        <select name="fields[{{ $index }}][is_promoted]"
-                                                            class="form-select form-control-sm">
-                                                            <option value="0" {{ ($field->is_promoted ?? 0) == 0 ? 'selected' : '' }}>No</option>
-                                                            <option value="1" {{ ($field->is_promoted ?? 0) == 1 ? 'selected' : '' }}>Yes</option>
-                                                        </select>
-                                                    </div>
+        <div class="col-md-3 options-wrapper
+            {{ in_array($field->type,['select','radio','checkbox']) ? '' : 'd-none' }}">
 
-                                                </div>
-                                            </div>
+            <label>Options</label>
 
-                                            <!-- DELETE -->
-                                            <div class="col-md-1">
-                                                <button type="button" class="btn btn-danger btn-sm w-100 removeRow">
-                                                    <i class="ri-delete-bin-line"></i>
-                                                </button>
-                                            </div>
+            <input
+                type="text"
+                class="form-control"
+                name="fields[{{ $index }}][options]"
+                value="{{ $field->options ? implode(',', json_decode($field->options,true)) : '' }}">
+        </div>
 
-                                        </div>
+        <div class="col-md-1">
 
-                                    </div>
+            <label>Order</label>
 
-                                @endforeach
+            <input
+                type="number"
+                name="fields[{{ $index }}][sort_order]"
+                value="{{ $field->sort_order }}"
+                class="form-control">
+        </div>
+
+        <div class="col-md-5">
+
+            <div class="row">
+
+                <div class="col-3">
+                    <label>Req.</label>
+
+                    <select
+                        name="fields[{{ $index }}][is_required]"
+                        class="form-control">
+
+                        <option value="0" {{ !$field->is_required ? 'selected' : '' }}>No</option>
+                        <option value="1" {{ $field->is_required ? 'selected' : '' }}>Yes</option>
+
+                    </select>
+                </div>
+
+                <div class="col-3">
+                    <label>Filter</label>
+
+                    <select
+                        name="fields[{{ $index }}][is_filterable]"
+                        class="form-control">
+
+                        <option value="0" {{ !$field->is_filterable ? 'selected' : '' }}>No</option>
+                        <option value="1" {{ $field->is_filterable ? 'selected' : '' }}>Yes</option>
+
+                    </select>
+                </div>
+
+                <div class="col-3">
+                    <label>Search</label>
+
+                    <select
+                        name="fields[{{ $index }}][is_searchable]"
+                        class="form-control">
+
+                        <option value="0" {{ !$field->is_searchable ? 'selected' : '' }}>No</option>
+                        <option value="1" {{ $field->is_searchable ? 'selected' : '' }}>Yes</option>
+
+                    </select>
+                </div>
+
+                <div class="col-3">
+                    <label>Unique</label>
+
+                    <select
+                        name="fields[{{ $index }}][is_unique]"
+                        class="form-control">
+
+                        <option value="0" {{ !$field->is_unique ? 'selected' : '' }}>No</option>
+                        <option value="1" {{ $field->is_unique ? 'selected' : '' }}>Yes</option>
+
+                    </select>
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-1 text-end mt-5">
+
+            <button
+                type="button"
+                class="btn btn-danger removeRow">
+
+                Remove
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+@endforeach
 
                             </div>
 
@@ -145,7 +200,6 @@
     </div>
 
 @endsection
-
 @section('scripts')
     <script>
         $(document).ready(function () {

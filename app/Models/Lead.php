@@ -8,14 +8,17 @@ class Lead extends Model
 {
     protected $fillable = [
         'id',
-        'lead_id',
+        'added_by',
         'tenant_id',
-        'created_by',
-        'name',
-        'email',
-        'phone',
-        'company',
-        'position',
-        'lead_import_file_id',
+        'list_id',
+        'assigned_to',
+        'status',
+        'email_index',
+        'phone_index',
+        'duplicate_hash',
+        'data',
+        'last_followup_at',
+        'next_followup_at',
+        'created_by'
     ];
 }

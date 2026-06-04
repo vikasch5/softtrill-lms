@@ -7,6 +7,7 @@ use App\Imports\LeadsImport;
 use App\Models\Lead;
 use App\Models\LeadField;
 use App\Models\LeadImportFile;
+use App\Models\LeadList;
 use App\Models\Lists;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,88 +18,177 @@ class LeadController extends Controller
 {
     public function fieldList()
     {
-        $fields = DB::table('lead_fields')->orderBy('sort_order')->get();
-        return view('lms.pages.field-list', compact('fields'));
+        $lists = DB::table('lead_lists as l')
+            ->leftJoin('lead_fields as lf', 'lf.list_id', '=', 'l.id')
+            ->select(
+                'l.id',
+                'l.name',
+                'l.is_active',
+                'l.created_at',
+                DB::raw('COUNT(lf.id) as total_fields')
+            )
+            ->groupBy(
+                'l.id',
+                'l.name',
+                'l.is_active',
+                'l.created_at'
+            )
+            ->orderBy('l.id', 'desc')
+            ->get();
+
+        return view(
+            'lms.pages.field-list',
+            compact('lists')
+        );
     }
-    public function fieldAddIndex($id = null)
+    public function fieldAddIndex($listId = null)
     {
-        $fieldsData = $id ? DB::table('lead_fields')->where('id', $id)->get() : null;
-        return view('lms.pages.field-add', compact('fieldsData'));
+        $list = null;
+
+        $fieldsData = collect();
+
+        if ($listId) {
+
+            $list = DB::table('lead_lists')
+                ->where('id', $listId)
+                ->first();
+
+            abort_if(!$list, 404);
+
+            $fieldsData = DB::table('lead_fields')
+                ->where('list_id', $listId)
+                ->orderBy('sort_order')
+                ->get();
+        }
+
+        if ($fieldsData->isEmpty()) {
+
+            $fieldsData = collect([
+                (object) [
+                    'id' => null,
+                    'name' => '',
+                    'type' => 'text',
+                    'options' => null,
+                    'sort_order' => 0,
+                    'is_required' => 0,
+                    'is_filterable' => 0,
+                    'is_searchable' => 0,
+                    'is_unique' => 0,
+                ]
+            ]);
+        }
+
+        return view(
+            'lms.pages.field-add',
+            compact('list', 'fieldsData')
+        );
     }
 
     public function fieldStoreOrUpdate(Request $request)
     {
+        $request->validate([
+            // 'list_id' => 'required|exists:lead_lists,id',
+            'fields' => 'required|array|min:1',
+        ]);
+
         try {
-
-            $fields = $request->fields;
-
-            if (!$fields || !is_array($fields)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No fields data received'
-                ]);
-            }
 
             DB::beginTransaction();
 
-            foreach ($fields as $field) {
+            $tenantId = auth()->id();
+            $listId = '1';
 
-                if (empty($field['name'])) {
+            foreach ($request->fields as $field) {
+
+                if (empty(trim($field['name'] ?? ''))) {
                     continue;
                 }
+
+                /*
+                |--------------------------------------------------------------------------
+                | Generate Slug
+                |--------------------------------------------------------------------------
+                */
 
                 $slug = Str::slug($field['name'], '_');
 
                 $originalSlug = $slug;
-                $count = 1;
+                $counter = 1;
 
                 while (
-                    DB::table('lead_fields')
+                    LeadField::where('list_id', $listId)
                         ->where('slug', $slug)
-                        ->when(!empty($field['id']), function ($q) use ($field) {
-                            $q->where('id', '!=', $field['id']);
-                        })
+                        ->when(
+                            !empty($field['id']),
+                            fn($q) => $q->where('id', '!=', $field['id'])
+                        )
                         ->exists()
                 ) {
-                    $slug = $originalSlug . '_' . $count;
-                    $count++;
+                    $slug = $originalSlug . '_' . $counter;
+                    $counter++;
                 }
+
+                /*
+                |--------------------------------------------------------------------------
+                | Options
+                |--------------------------------------------------------------------------
+                */
 
                 $options = null;
 
-                if (($field['type'] ?? '') === 'select' && !empty($field['options'])) {
+                if (
+                    in_array(
+                        $field['type'] ?? '',
+                        ['select', 'radio', 'checkbox']
+                    )
+                ) {
 
-                    $optionsArray = array_filter(array_map('trim', explode(',', $field['options'])));
+                    $options = collect(
+                        explode(',', $field['options'] ?? '')
+                    )
+                        ->map(fn($item) => trim($item))
+                        ->filter()
+                        ->values()
+                        ->toArray();
 
-                    $options = json_encode(array_values($optionsArray));
+                    $options = empty($options)
+                        ? null
+                        : json_encode($options);
                 }
 
-                $data = [
-                    'name' => $field['name'],
-                    'slug' => $slug,
-                    'type' => $field['type'] ?? 'text',
-                    'sort_order' => $field['sort_order'] ?? 0,
+                /*
+                |--------------------------------------------------------------------------
+                | Save
+                |--------------------------------------------------------------------------
+                */
 
-                    'is_required' => isset($field['is_required']) ? 1 : 0,
-                    'is_filterable' => isset($field['is_filterable']) ? 1 : 0,
-                    'is_promoted' => isset($field['is_promoted']) ? 1 : 0,
+                LeadField::updateOrCreate(
+                    [
+                        'id' => $field['id'] ?? null,
+                    ],
+                    [
+                        'added_by' => auth()->id(),
+                        'tenant_id' => $tenantId,
+                        'list_id' => $listId,
 
-                    'options' => $options,
-                    'updated_at' => now(),
-                ];
+                        'name' => trim($field['name']),
+                        'slug' => $slug,
 
-                if (!empty($field['id'])) {
+                        'type' => $field['type'] ?? 'text',
 
-                    DB::table('lead_fields')
-                        ->where('id', $field['id'])
-                        ->update($data);
+                        'is_required' => (bool) ($field['is_required'] ?? 0),
 
-                } else {
+                        'is_filterable' => (bool) ($field['is_filterable'] ?? 0),
 
-                    $data['created_at'] = now();
+                        'is_searchable' => (bool) ($field['is_searchable'] ?? 0),
 
-                    DB::table('lead_fields')->insert($data);
-                }
+                        'is_unique' => (bool) ($field['is_unique'] ?? 0),
+
+                        'options' => $options,
+
+                        'sort_order' => (int) ($field['sort_order'] ?? 0),
+                    ]
+                );
             }
 
             DB::commit();
@@ -108,77 +198,101 @@ class LeadController extends Controller
                 'message' => 'Fields saved successfully'
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
 
             DB::rollBack();
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error saving fields',
-                'error' => $e->getMessage()
-            ]);
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 
     public function leadImport()
     {
-        $lists = Lists::where('added_by', auth()->id())->get();
+        $lists = LeadList::where('added_by', auth()->id())->get();
         return view('lms.pages.lead-import', compact('lists'));
     }
 
-    public function downloadSample()
+    public function downloadSample($listId)
     {
-        $filename = "sample_leads.csv";
+        $leadFields = LeadField::where('list_id', $listId)
+            ->orderBy('sort_order')
+            ->get();
 
-        $headers = [
-            "Content-Type" => "text/csv",
-            "Content-Disposition" => "attachment; filename=$filename",
-        ];
-
-        // Default columns
-        $columns = [
-            'name',
-            'email',
-            'phone'
-        ];
-
-        // Fetch custom fields
-        $leadFields = LeadField::orderBy('sort_order')->get();
-
-        foreach ($leadFields as $field) {
-            $columns[] = $field->slug; // IMPORTANT: use slug
+        if ($leadFields->isEmpty()) {
+            abort(404, 'No fields found for this list.');
         }
 
-        $callback = function () use ($columns, $leadFields) {
+        $filename = 'sample_leads_' . $listId . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate',
+            'Expires' => '0',
+        ];
+
+        $callback = function () use ($leadFields) {
 
             $file = fopen('php://output', 'w');
 
-            // Add header row
+            // CSV Headers
+            $columns = $leadFields
+                ->pluck('slug')
+                ->toArray();
+
             fputcsv($file, $columns);
 
-            // Sample row
-            $sampleRow = [
-                'John Doe',
-                'john@gmail.com',
-                '9876543210'
-            ];
+            // Sample Data Row
+            $sampleRow = [];
 
             foreach ($leadFields as $field) {
 
-                // Generate smart sample data based on field type
                 switch ($field->type) {
 
+                    case 'email':
+                        $sampleRow[] = 'john@example.com';
+                        break;
+
+                    case 'phone':
+                        $sampleRow[] = '9876543210';
+                        break;
+
                     case 'number':
-                        $sampleRow[] = '123';
+                        $sampleRow[] = '100';
+                        break;
+
+                    case 'decimal':
+                        $sampleRow[] = '1000.50';
                         break;
 
                     case 'date':
                         $sampleRow[] = now()->format('Y-m-d');
                         break;
 
+                    case 'datetime':
+                        $sampleRow[] = now()->format('Y-m-d H:i:s');
+                        break;
+
+                    case 'boolean':
+                        $sampleRow[] = '1';
+                        break;
+
                     case 'select':
+                    case 'radio':
+                    case 'checkbox':
+
                         $options = json_decode($field->options, true);
+
                         $sampleRow[] = $options[0] ?? 'Option1';
+
+                        break;
+
+                    case 'textarea':
+                        $sampleRow[] = 'Sample description';
                         break;
 
                     default:
@@ -192,66 +306,161 @@ class LeadController extends Controller
             fclose($file);
         };
 
-        return response()->stream($callback, 200, $headers);
+        return response()->stream(
+            $callback,
+            200,
+            $headers
+        );
     }
 
     public function import(Request $request)
     {
         $request->validate([
-            'file' => 'required',
-            'list_id' => 'nullable|exists:lists,id',
-            'list_name' => 'nullable|string|max:255'
+            'file' => 'required|file',
+            'list_id' => 'nullable|exists:lead_lists,id',
         ]);
 
-        $tenantId = auth()->id();
-        $userId = auth()->id();
+        DB::beginTransaction();
 
-        // =========================
-        // 1. CREATE OR USE LIST
-        // =========================
-        if ($request->list_id) {
+        try {
 
-            $list = Lists::findOrFail($request->list_id);
+            $tenantId = auth()->id();
+            $userId = auth()->id();
 
-        } else {
+            /*
+            |--------------------------------------------------------------------------
+            | Existing List
+            |--------------------------------------------------------------------------
+            */
 
-            $lastId = Lists::max('id') + 1;
-            $listCode = 'LIST' . str_pad($lastId, 4, '0', STR_PAD_LEFT);
+            if ($request->filled('list_id')) {
 
-            $list = Lists::create([
+                $list = LeadList::findOrFail($request->list_id);
+
+            } else {
+
+                /*
+                |--------------------------------------------------------------------------
+                | Auto Create List
+                |--------------------------------------------------------------------------
+                */
+
+                $file = $request->file('file');
+
+                $rows = Excel::toArray([], $file);
+
+                if (empty($rows[0]) || empty($rows[0][0])) {
+
+                    throw new \Exception(
+                        'File does not contain header row.'
+                    );
+                }
+
+                $headers = array_filter(
+                    array_map('trim', $rows[0][0])
+                );
+
+                $list = LeadList::create([
+                    'tenant_id' => $tenantId,
+                    'name' => 'Imported List ' . now()->format('YmdHis'),
+                    'description' => 'Auto generated from import file',
+                    'is_active' => 1,
+                    'created_by' => $userId,
+                ]);
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Auto Create Fields
+                |--------------------------------------------------------------------------
+                */
+
+                // $sortOrder = 1;
+
+                // foreach ($headers as $header) {
+
+                //     LeadField::create([
+                //         'tenant_id' => $tenantId,
+                //         'list_id' => $list->id,
+
+                //         'name' => ucwords(
+                //             str_replace('_', ' ', $header)
+                //         ),
+
+                //         'slug' => Str::slug(
+                //             $header,
+                //             '_'
+                //         ),
+
+                //         'type' => 'text',
+
+                //         'is_required' => 0,
+                //         'is_filterable' => 1,
+                //         'is_searchable' => 1,
+                //         'is_unique' => 0,
+
+                //         'sort_order' => $sortOrder++,
+                //     ]);
+                // }
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Import Log
+            |--------------------------------------------------------------------------
+            */
+
+            $import = LeadImportFile::create([
                 'tenant_id' => $tenantId,
-                'list_code' => $listCode,
-                'name' => $request->list_name ?? 'Imported List ' . $listCode,
-                'added_by' => $userId,
+
+                'list_id' => $list->id,
+
+                'file_name' => $request
+                    ->file('file')
+                    ->store('lead-imports'),
+
+                'original_name' => $request
+                    ->file('file')
+                    ->getClientOriginalName(),
+
+                'status' => 'processing',
+
+                'uploaded_by' => $userId,
             ]);
+
+            /*
+            |--------------------------------------------------------------------------
+            | Import Leads
+            |--------------------------------------------------------------------------
+            */
+
+            Excel::import(
+                new LeadsImport(
+                    $import,
+                    $list->id,
+                    $tenantId,
+                    $userId
+                ),
+                $request->file('file')
+            );
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Leads imported successfully.',
+                'list_id' => $list->id,
+            ]);
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
         }
-
-        // =========================
-        // 2. CREATE IMPORT RECORD
-        // =========================
-        $import = LeadImportFile::create([
-            'tenant_id' => $tenantId,
-            'list_name' => $list->name,
-            'list_code' => $list->list_code,
-            'file_name' => $request->file('file')->store('imports'),
-            'original_name' => $request->file('file')->getClientOriginalName(),
-            'uploaded_by' => $userId,
-            'status' => 'processing'
-        ]);
-
-        // =========================
-        // 3. IMPORT (FIXED)
-        // =========================
-        Excel::import(
-            new LeadsImport($import, $list->id, $tenantId, $userId),
-            $request->file('file')
-        );
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Leads Imported Successfully',
-            'list_id' => $list->id
-        ]);
     }
 
     public function leadAdd()

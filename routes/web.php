@@ -24,7 +24,7 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/field-delete', [LeadController::class, 'delete'])->name('lms.lead-fields.delete');
     Route::get('/lead-import', [LeadController::class, 'leadImport'])->name('lms.lead.import');
     Route::post('/lead-import', [LeadController::class, 'import'])->name('lms.leads.import.save');
-    Route::get('/lead-sample', [LeadController::class, 'downloadSample'])->name('lms.leads.sample');
+    Route::get('/lead-sample/{id}', [LeadController::class, 'downloadSample'])->name('lms.leads.sample');
     Route::get('/lead-add/{id?}', [LeadController::class, 'leadAdd'])->name('lms.leads.add');
     Route::post('/lead-save', [LeadController::class, 'storeOrUpdate'])->name('lms.leads.store');
 

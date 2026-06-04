@@ -4,23 +4,24 @@ namespace App\Imports;
 
 use App\Models\Lead;
 use App\Models\LeadField;
-use App\Models\LeadFieldValue;
-use App\Models\ListLead;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 class LeadsImport implements ToCollection, WithHeadingRow
 {
-    protected $listId;
     protected $import;
+    protected $listId;
     protected $tenantId;
     protected $userId;
 
-    public function __construct($import, $listId, $tenantId, $userId)
-    {
+    public function __construct(
+        $import,
+        $listId,
+        $tenantId,
+        $userId
+    ) {
         $this->import = $import;
         $this->listId = $listId;
         $this->tenantId = $tenantId;
@@ -29,11 +30,14 @@ class LeadsImport implements ToCollection, WithHeadingRow
 
     public function collection(Collection $rows)
     {
-        $fields = LeadField::get()->keyBy('slug');
+        $fieldSlugs = LeadField::where('list_id', $this->listId)
+            ->pluck('slug')
+            ->toArray();
 
         $total = 0;
         $imported = 0;
         $failed = 0;
+        $duplicates = 0;
 
         foreach ($rows as $row) {
 
@@ -41,129 +45,147 @@ class LeadsImport implements ToCollection, WithHeadingRow
 
             try {
 
-                DB::beginTransaction();
+                $rowData = $row->toArray();
 
-                // =========================
-                // 1. VALIDATE PHONE
-                // =========================
-                $phone = preg_replace('/\D/', '', $row['phone'] ?? '');
+                $leadData = [];
 
-                if (!$phone) {
+                foreach ($fieldSlugs as $slug) {
+
+                    if (!array_key_exists($slug, $rowData)) {
+                        continue;
+                    }
+
+                    $value = trim((string) $rowData[$slug]);
+
+                    if ($value === '') {
+                        continue;
+                    }
+
+                    $leadData[$slug] = $value;
+                }
+
+                if (empty($leadData)) {
+
                     $failed++;
-                    DB::rollBack();
+
                     continue;
                 }
 
-                // =========================
-                // 2. CREATE / UPDATE MASTER LEAD
-                // =========================
-                $lead = Lead::updateOrCreate(
-                    [
-                        'phone' => $phone,
-                        'tenant_id' => $this->tenantId
-                    ],
-                    [
-                        'lead_import_file_id' => $this->import->id,
-                        'created_by' => $this->userId,
+                /*
+                |--------------------------------------------------------------------------
+                | Email & Phone Detection
+                |--------------------------------------------------------------------------
+                */
 
-                        'name' => $row['name'] ?? null,
-                        'email' => $row['email'] ?? null,
-                        'address' => $row['address'] ?? null,
-                        'city' => $row['city'] ?? null,
+                $email = null;
+                $phone = null;
 
-                        'custom_fields' => json_encode($row)
-                    ]
-                );
+                foreach ($leadData as $key => $value) {
 
-                // =========================
-                // 3. ATTACH TO LIST (CORE)
-                // =========================
-                ListLead::updateOrCreate(
-                    [
-                        'list_id' => $this->listId,
-                        'lead_id' => $lead->id,
-                    ],
-                    [
-                        'tenant_id' => $this->tenantId,
-                        'status' => 'new',
-                        'assigned_to' => $this->userId,
-                        'custom_data' => json_encode($row),
-                    ]
-                );
-
-                // =========================
-                // 4. FILTERABLE FIELDS
-                // =========================
-                foreach ($fields as $slug => $field) {
-
-                    if (!isset($row[$slug])) continue;
-
-                    $value = $row[$slug];
-                    if ($value === null || $value === '') continue;
-
-                    $data = [
-                        'lead_id' => $lead->id,
-                        'field_id' => $field->id,
-                        'value_string' => null,
-                        'value_number' => null,
-                        'value_date' => null,
-                        'value_boolean' => null,
-                    ];
-
-                    switch ($field->type) {
-
-                        case 'number':
-                            $data['value_number'] = (int)$value;
-                            break;
-
-                        case 'date':
-                            $data['value_date'] = strtotime($value)
-                                ? date('Y-m-d H:i:s', strtotime($value))
-                                : null;
-                            break;
-
-                        case 'checkbox':
-                            $data['value_boolean'] = in_array(strtolower($value), ['1','yes','true']);
-                            break;
-
-                        default:
-                            $data['value_string'] = $value;
-                            break;
+                    if (
+                        !$email &&
+                        filter_var($value, FILTER_VALIDATE_EMAIL)
+                    ) {
+                        $email = strtolower($value);
                     }
 
-                    LeadFieldValue::updateOrCreate(
-                        [
-                            'lead_id' => $lead->id,
-                            'field_id' => $field->id,
-                        ],
-                        $data
-                    );
+                    if (
+                        !$phone &&
+                        preg_match('/^[0-9\-\+\s\(\)]{8,20}$/', $value)
+                    ) {
+                        $phone = preg_replace('/\D/', '', $value);
+                    }
                 }
 
-                DB::commit();
+                /*
+                |--------------------------------------------------------------------------
+                | Duplicate Hash
+                |--------------------------------------------------------------------------
+                */
+
+                $duplicateHash = md5(
+                    $this->listId . '|' .
+                    strtolower($email ?? '') . '|' .
+                    ($phone ?? '')
+                );
+
+                $exists = Lead::where(
+                    'tenant_id',
+                    $this->tenantId
+                )
+                    ->where(
+                        'list_id',
+                        $this->listId
+                    )
+                    ->where(
+                        'duplicate_hash',
+                        $duplicateHash
+                    )
+                    ->exists();
+
+                if ($exists) {
+
+                    $duplicates++;
+
+                    continue;
+                }
+
+                /*
+                |--------------------------------------------------------------------------
+                | Create Lead
+                |--------------------------------------------------------------------------
+                */
+
+                Lead::create([
+
+                    'tenant_id' => $this->tenantId,
+
+                    'list_id' => $this->listId,
+
+                    'assigned_to' => $this->userId,
+
+                    'status' => 'new',
+
+                    'email_index' => $email,
+
+                    'phone_index' => $phone,
+
+                    'duplicate_hash' => $duplicateHash,
+
+                    'data' => $leadData,
+
+                    'created_by' => $this->userId,
+
+                ]);
+
                 $imported++;
 
             } catch (\Throwable $e) {
 
-                DB::rollBack();
+                Log::error('Lead Import Failed', [
 
-                Log::error('Lead Import Error', [
-                    'row' => $row,
-                    'error' => $e->getMessage()
+                    'list_id' => $this->listId,
+
+                    'row' => $row->toArray(),
+
+                    'error' => $e->getMessage(),
+
                 ]);
 
                 $failed++;
             }
         }
 
-        // =========================
-        // 5. UPDATE IMPORT STATS
-        // =========================
         $this->import->update([
+
             'total_records' => $total,
+
             'imported_records' => $imported,
+
             'failed_records' => $failed,
-            'status' => 'completed'
+
+            'status' => 'completed',
+
         ]);
     }
 }
