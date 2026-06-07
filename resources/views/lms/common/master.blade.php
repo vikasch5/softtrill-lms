@@ -41,7 +41,7 @@
   <script src="{{ asset('lms/js/app.js')}}"></script>
 
 {{-- <script src="{{ asset('lms/js/homeOneChart.js')}}"></script> --}}
-<script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.20.0/dist/jquery.validate.min.js"></script>
+<script src="{{ asset('lms/js/lib/jquery.validate.min.js') }}"></script>
     <script src="{{ asset('lms/js/validation.js')}}"></script>
 <script src="{{ asset('lms/js/lms.js')}}"></script>
 {{-- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> --}}

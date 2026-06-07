@@ -2,20 +2,61 @@
 
 namespace App\Http\Controllers\Lms;
 
-use App\Http\Controllers\Controller;
 use App\Imports\LeadsImport;
+use App\Models\Feedback;
 use App\Models\Lead;
+use App\Models\LeadActivityLog;
+use App\Models\LeadFeedback;
 use App\Models\LeadField;
+use App\Models\LeadFollowup;
 use App\Models\LeadImportFile;
 use App\Models\LeadList;
+use App\Models\LeadNote;
 use App\Models\Lists;
+use App\Models\User;
+use App\Models\UserDetails;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 
 class LeadController extends Controller
 {
+
+    public function leadsList(Request $request)
+    {
+        $query = Lead::query()
+            ->with(['list', 'assignedTo'])
+            ->where('added_by', auth()->id());
+
+        if ($request->filled('list_id')) {
+            $query->where('list_id', $request->list_id);
+        }
+
+        $leads = $query
+            ->latest()
+            ->paginate(20);
+
+        $managers = User::role('Manager')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $supervisors = User::role('TeamLeader')
+            ->with('details')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $users = User::role('Agent')
+            ->with('details')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return view(
+            'lms.pages.leads-list',
+            compact('leads', 'managers', 'supervisors', 'users')
+        );
+    }
     public function fieldList()
     {
         $lists = DB::table('lead_lists as l')
@@ -239,16 +280,29 @@ class LeadController extends Controller
 
             $file = fopen('php://output', 'w');
 
-            // CSV Headers
-            $columns = $leadFields
-                ->pluck('slug')
-                ->toArray();
+            // Default Columns
+            $columns = [
+                'name',
+                'email',
+                'phone_number'
+            ];
+
+            // Dynamic Fields
+            $columns = array_merge(
+                $columns,
+                $leadFields->pluck('slug')->toArray()
+            );
 
             fputcsv($file, $columns);
 
-            // Sample Data Row
-            $sampleRow = [];
+            // Default Sample Data
+            $sampleRow = [
+                'John Doe',
+                'john@example.com',
+                '9876543210'
+            ];
 
+            // Dynamic Sample Data
             foreach ($leadFields as $field) {
 
                 switch ($field->type) {
@@ -288,7 +342,6 @@ class LeadController extends Controller
                         $options = json_decode($field->options, true);
 
                         $sampleRow[] = $options[0] ?? 'Option1';
-
                         break;
 
                     case 'textarea':
@@ -361,6 +414,7 @@ class LeadController extends Controller
                 );
 
                 $list = LeadList::create([
+                    'added_by' => auth()->id(),
                     'tenant_id' => $tenantId,
                     'name' => 'Imported List ' . now()->format('YmdHis'),
                     'description' => 'Auto generated from import file',
@@ -375,33 +429,35 @@ class LeadController extends Controller
                 |--------------------------------------------------------------------------
                 */
 
-                // $sortOrder = 1;
+                $sortOrder = 1;
 
-                // foreach ($headers as $header) {
+                foreach ($headers as $header) {
 
-                //     LeadField::create([
-                //         'tenant_id' => $tenantId,
-                //         'list_id' => $list->id,
+                    LeadField::create([
 
-                //         'name' => ucwords(
-                //             str_replace('_', ' ', $header)
-                //         ),
+                        'added_by' => auth()->id(),
+                        'tenant_id' => $tenantId,
+                        'list_id' => $list->id,
 
-                //         'slug' => Str::slug(
-                //             $header,
-                //             '_'
-                //         ),
+                        'name' => ucwords(
+                            str_replace('_', ' ', $header)
+                        ),
 
-                //         'type' => 'text',
+                        'slug' => Str::slug(
+                            $header,
+                            '_'
+                        ),
 
-                //         'is_required' => 0,
-                //         'is_filterable' => 1,
-                //         'is_searchable' => 1,
-                //         'is_unique' => 0,
+                        'type' => 'text',
 
-                //         'sort_order' => $sortOrder++,
-                //     ]);
-                // }
+                        'is_required' => 0,
+                        'is_filterable' => 1,
+                        'is_searchable' => 1,
+                        'is_unique' => 0,
+
+                        'sort_order' => $sortOrder++,
+                    ]);
+                }
             }
 
             /*
@@ -592,6 +648,398 @@ class LeadController extends Controller
                 'message' => $e->getMessage()
             ]);
         }
+    }
+
+    public function leadsEdit($id)
+    {
+        $lead = Lead::findOrFail($id);
+
+        $fields = LeadField::where(
+            'list_id',
+            $lead->list_id
+        )
+            ->orderBy('sort_order')
+            ->get();
+
+        return view(
+            'lms.pages.lead-edit',
+            compact(
+                'lead',
+                'fields'
+            )
+        );
+    }
+
+    public function updateLead(Request $request)
+    {
+        $id = $request->lead_id;
+        $lead = Lead::findOrFail($id);
+
+        $leadData = $request->input('data', []);
+
+        $lead->update([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone_number' => $request->phone_number,
+
+            'data' => $leadData,
+
+            'email_index' =>
+                $leadData['email']
+                ?? null,
+
+            'phone_index' =>
+                $leadData['phone']
+                ?? null,
+
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Lead updated successfully.'
+        ]);
+    }
+
+    public function leadsView($id)
+    {
+        $lead = Lead::findOrFail($id);
+
+        $fields = LeadField::where(
+            'list_id',
+            $lead->list_id
+        )
+            ->orderBy('sort_order')
+            ->get();
+
+        $leadFeedback = LeadFeedback::with([
+            'feedback',
+            'subFeedback',
+            'user'
+        ])
+            ->where('lead_id', $lead->id)
+            ->latest()
+            ->get();
+
+        $followups = LeadFollowup::where(
+            'lead_id',
+            $lead->id
+        )
+            ->latest()
+            ->get();
+
+        $activities = LeadActivityLog::where(
+            'lead_id',
+            $lead->id
+        )
+            ->latest()
+            ->limit(50)
+            ->get();
+
+        $users = User::select(
+            'id',
+            'name'
+        )
+            ->orderBy('name')
+            ->get();
+
+        $feedbacks = Feedback::where('added_by', auth()->id())->where('parent_id', null)
+            ->orderBy('name')
+            ->get();
+        return view(
+            'lms.pages.lead-view',
+            compact(
+                'lead',
+                'fields',
+                'leadFeedback',
+                'followups',
+                'activities',
+                'users',
+                'feedbacks'
+            )
+        );
+
+    }
+
+    public function leadDelete(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|exists:leads,id',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $user = auth()->user();
+            $tenantId = $user->tenant_id ?? null;
+
+            $leadQuery = Lead::where('id', $request->id);
+
+            if ($tenantId) {
+                $leadQuery->where('tenant_id', $tenantId);
+            } else {
+                $leadQuery->where(function ($query) {
+                    $query->where('added_by', auth()->id())
+                        ->orWhere('created_by', auth()->id())
+                        ->orWhere('assigned_to', auth()->id());
+                });
+            }
+
+            $lead = $leadQuery->first();
+
+            if (!$lead) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Lead not found or access denied.'
+                ], 404);
+            }
+
+            LeadFeedback::where('lead_id', $lead->id)->delete();
+            LeadFollowup::where('lead_id', $lead->id)->delete();
+            LeadActivityLog::where('lead_id', $lead->id)->delete();
+            LeadNote::where('lead_id', $lead->id)->delete();
+            DB::table('lead_field_values')
+                ->where('lead_id', $lead->id)
+                ->delete();
+
+
+            $lead->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Lead deleted successfully.'
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function assignLeads(Request $request)
+    {
+        $request->validate([
+            'lead_ids' => 'required|array|min:1',
+            'lead_ids.*' => 'required|integer|exists:leads,id',
+            'manager_id' => 'nullable|exists:users,id',
+            'supervisor_id' => 'nullable|exists:users,id',
+            'user_id' => 'required|exists:users,id',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $user = auth()->user();
+            $tenantId = $user->tenant_id ?? null;
+
+            $leadQuery = Lead::whereIn('id', $request->lead_ids);
+
+            if ($tenantId) {
+                $leadQuery->where('tenant_id', $tenantId);
+            } else {
+                $leadQuery->where('added_by', auth()->id());
+            }
+
+            $leadIds = $leadQuery->pluck('id');
+
+            if ($leadIds->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No valid leads found for assignment.'
+                ], 404);
+            }
+
+            $assignedUser = User::findOrFail($request->user_id);
+
+            Lead::whereIn('id', $leadIds)->update([
+                'assigned_to' => $assignedUser->id,
+            ]);
+
+            foreach ($leadIds as $leadId) {
+                LeadActivityLog::create([
+                    'tenant_id' => $tenantId ?? auth()->id(),
+                    'lead_id' => $leadId,
+                    'added_by' => auth()->id(),
+                    'activity' => 'lead_assigned',
+                    'old_value' => null,
+                    'user_id' => auth()->id(),
+                    'new_value' => json_encode([
+                        'manager_id' => $request->manager_id,
+                        'supervisor_id' => $request->supervisor_id,
+                        'user_id' => $assignedUser->id,
+                        'user_name' => $assignedUser->name,
+                    ]),
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Lead assigned successfully.'
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function feedbackAdd($id = null)
+    {
+        $feedback = null;
+
+        if ($id) {
+            $feedback = Feedback::findOrFail($id);
+        }
+
+        $parents = Feedback::whereNull('parent_id')
+            ->where('status', 1)
+            ->orderBy('name')
+            ->get();
+
+        return view('lms.pages.feedback-add', compact(
+            'feedback',
+            'parents'
+        ));
+    }
+
+    public function feedbackStoreOrUpdate(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|max:255',
+            'parent_id' => 'nullable|exists:feedbacks,id',
+            'status' => 'required|boolean',
+        ]);
+
+        Feedback::updateOrCreate(
+            [
+                'id' => $request->feedback_id
+            ],
+            [
+                'tenant_id' => auth()->user()->tenant_id,
+                'parent_id' => $request->parent_id,
+                'name' => $request->name,
+                'slug' => Str::slug($request->name),
+                'status' => $request->status,
+            ]
+        );
+
+        $msg = $request->feedback_id
+            ? 'Feedback updated successfully'
+            : 'Feedback created successfully';
+        return response()->json([
+            'success' => true,
+            'message' => $msg
+        ]);
+    }
+
+    public function feedbackList()
+    {
+        $feedbacks = Feedback::with('parent')
+            ->latest()
+            ->paginate(20);
+
+        return view('lms.pages.feedback-list', compact('feedbacks'));
+    }
+
+    public function feedbackDelete(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|exists:feedbacks,id',
+        ]);
+
+        $feedback = Feedback::findOrFail($request->id);
+
+        $feedback->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Feedback deleted successfully'
+        ]);
+
+    }
+
+    public function subFeedbacks($feedbackId)
+    {
+        $subFeedbacks = Feedback::where('parent_id', $feedbackId)
+            ->where('status', 1)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return response()->json($subFeedbacks);
+    }
+
+    public function quickUpdate(Request $request)
+    {
+        $request->validate([
+            'feedback_id' => 'required|exists:feedbacks,id',
+            'sub_feedback_id' => 'nullable|exists:feedbacks,id',
+            'next_followup_at' => 'nullable|date',
+            'remarks' => 'nullable|string|max:2000',
+        ]);
+
+        try {
+            LeadFeedback::create([
+                'tenant_id' => auth()->id(),
+                'lead_id' => $request->lead_id,
+                'added_by' => auth()->id(),
+                'feedback_id' => $request->feedback_id,
+                'sub_feedback_id' => $request->sub_feedback_id,
+                'followup_date' => $request->next_followup_at,
+                'status' => 'completed',
+                'remarks' => $request->remarks,
+            ]);
+
+            // dd($request->all());
+
+            if ($request->filled('next_followup_at')) {
+                Lead::where('id', $request->lead_id)
+                    ->update([
+                        'next_followup_at' => $request->next_followup_at,
+                    ]);
+            }
+
+            DB::beginTransaction();
+            LeadActivityLog::create([
+                'tenant_id' => auth()->id(),
+                'lead_id' => $request->lead_id,
+                'added_by' => auth()->id(),
+
+                'activity' => 'feedback_added',
+
+                'old_value' => null,
+                'user_id' => auth()->id(),
+
+                'new_value' => json_encode([
+                    'feedback_id' => $request->feedback_id,
+                    'sub_feedback_id' => $request->sub_feedback_id,
+                    'followup_date' => $request->next_followup_at,
+                    'remarks' => $request->remarks,
+                ]),
+            ]);
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Feedback saved successfully.'
+            ]);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+
     }
 
 }

@@ -47,6 +47,23 @@ class LeadsImport implements ToCollection, WithHeadingRow
 
                 $rowData = $row->toArray();
 
+                $name = isset($rowData['name'])
+                    ? trim($rowData['name'])
+                    : null;
+
+                $email = isset($rowData['email'])
+                    ? strtolower(trim($rowData['email']))
+                    : null;
+
+                $phone = isset($rowData['phone_number'])
+                    ? preg_replace('/\D/', '', $rowData['phone_number'])
+                    : null;
+                unset(
+                    $rowData['name'],
+                    $rowData['email'],
+                    $rowData['phone_number']
+                );
+
                 $leadData = [];
 
                 foreach ($fieldSlugs as $slug) {
@@ -64,39 +81,10 @@ class LeadsImport implements ToCollection, WithHeadingRow
                     $leadData[$slug] = $value;
                 }
 
-                if (empty($leadData)) {
-
+                if (empty($leadData) && empty($name) && empty($email) && empty($phone)) {
                     $failed++;
-
                     continue;
                 }
-
-                /*
-                |--------------------------------------------------------------------------
-                | Email & Phone Detection
-                |--------------------------------------------------------------------------
-                */
-
-                $email = null;
-                $phone = null;
-
-                foreach ($leadData as $key => $value) {
-
-                    if (
-                        !$email &&
-                        filter_var($value, FILTER_VALIDATE_EMAIL)
-                    ) {
-                        $email = strtolower($value);
-                    }
-
-                    if (
-                        !$phone &&
-                        preg_match('/^[0-9\-\+\s\(\)]{8,20}$/', $value)
-                    ) {
-                        $phone = preg_replace('/\D/', '', $value);
-                    }
-                }
-
                 /*
                 |--------------------------------------------------------------------------
                 | Duplicate Hash
@@ -136,7 +124,16 @@ class LeadsImport implements ToCollection, WithHeadingRow
                 |--------------------------------------------------------------------------
                 */
 
+                Log::info('Creating Lead', [
+                    'list_id' => $this->listId,
+                    'email' => $email,
+                    'phone' => $phone,
+                ]);
                 Lead::create([
+
+                    'name' => $name,
+                    'email' => $email,
+                    'phone_number' => $phone,
 
                     'tenant_id' => $this->tenantId,
 

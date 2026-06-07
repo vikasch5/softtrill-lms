@@ -15905,11 +15905,11 @@ td.fc-header-center {
 /* === home 16 end === */
 /* === navbar css start === */
 .navbar-header {
-    height: 4.5rem;
+    height: 3rem;
     background-color: var(--white);
     position: sticky;
     top: 0;
-    padding: 1rem 1.5rem;
+    padding: 0.4rem 1.5rem;
     z-index: 2;
 }
 
@@ -16561,3 +16561,7 @@ html {
         font-size: 20px;
     }
 }
+
+/* html {
+    zoom: 0.9;
+} */
