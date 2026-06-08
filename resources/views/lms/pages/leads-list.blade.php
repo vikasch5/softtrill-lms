@@ -76,15 +76,6 @@
                         <tbody>
 
                             @forelse($leads as $lead)
-
-                                @php
-
-                                    $data = is_array($lead->data)
-                                        ? $lead->data
-                                        : json_decode($lead->data, true);
-
-                                @endphp
-
                                 <tr>
                                     <td>
                                         <input type="checkbox" class="form-check-input lead-checkbox" data-id="{{ $lead->id }}">

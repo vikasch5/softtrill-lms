@@ -27,6 +27,17 @@ class LeadController extends Controller
     public function leadsList(Request $request)
     {
         $query = Lead::query()
+            ->select([
+                'id',
+                'list_id',
+                'assigned_to',
+                'status',
+                'name',
+                'phone_number',
+                'email',
+                'created_at',
+                'added_by',
+            ])
             ->with(['list', 'assignedTo'])
             ->where('added_by', auth()->id());
 
@@ -35,8 +46,9 @@ class LeadController extends Controller
         }
 
         $leads = $query
-            ->latest()
-            ->paginate(20);
+            ->latest('id')
+            ->simplePaginate(20)
+            ->withQueryString();
 
         $managers = User::role('Manager')
             ->orderBy('name')
@@ -717,21 +729,22 @@ class LeadController extends Controller
             'user'
         ])
             ->where('lead_id', $lead->id)
-            ->latest()
+            ->latest('id')
             ->get();
 
         $followups = LeadFollowup::where(
             'lead_id',
             $lead->id
         )
-            ->latest()
+            ->latest('id')
             ->get();
 
-        $activities = LeadActivityLog::where(
-            'lead_id',
-            $lead->id
-        )
-            ->latest()
+        $activities = LeadActivityLog::with('user:id,name')
+            ->where(
+                'lead_id',
+                $lead->id
+            )
+            ->latest('id')
             ->limit(50)
             ->get();
 
@@ -745,6 +758,10 @@ class LeadController extends Controller
         $feedbacks = Feedback::where('added_by', auth()->id())->where('parent_id', null)
             ->orderBy('name')
             ->get();
+
+        $feedbackLookup = Feedback::where('added_by', auth()->id())
+            ->get(['id', 'name']);
+
         return view(
             'lms.pages.lead-view',
             compact(
@@ -754,7 +771,8 @@ class LeadController extends Controller
                 'followups',
                 'activities',
                 'users',
-                'feedbacks'
+                'feedbacks',
+                'feedbackLookup'
             )
         );
 
@@ -944,7 +962,7 @@ class LeadController extends Controller
     public function feedbackList()
     {
         $feedbacks = Feedback::with('parent')
-            ->latest()
+            ->latest('id')
             ->paginate(20);
 
         return view('lms.pages.feedback-list', compact('feedbacks'));

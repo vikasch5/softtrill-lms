@@ -19,6 +19,11 @@ class LeadActivityLog extends Model
         'user_id',
     ];
 
+    protected $casts = [
+        'old_value' => 'array',
+        'new_value' => 'array',
+    ];
+
     public function lead()
     {
         return $this->belongsTo(Lead::class, 'lead_id');
@@ -26,6 +31,6 @@ class LeadActivityLog extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, 'user_id');
     }
 }

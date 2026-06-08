@@ -2,145 +2,180 @@
 
 @section('content')
 
-<div class="dashboard-main-body">
+    <div class="dashboard-main-body">
 
-    <div class="row gy-4">
-        <div class="col-lg-12">
+        <div class="row gy-4">
+            <div class="col-lg-12">
 
-            <div class="card">
+                <div class="card">
 
-                <div class="card-header d-flex align-items-center justify-content-between">
-                    <h5 class="card-title mb-0">Lead Fields</h5>
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <h5 class="card-title mb-0">Users List</h5>
 
-                    <a href="{{ route('lms.lead-fields.create') }}" class="btn btn-primary">
-                        + Add Field
-                    </a>
-                </div>
+                        <div class="btns">
+                            <a href="{{ route('lms.users.add') }}" class="btn btn-primary">Add New User</a>
+                        </div>
 
-                <div class="card-body">
+                    </div>
 
-                    <div class="table-responsive">
 
-                        <table class="table striped-table mb-0">
+                    <div class="card-body">
 
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Field Label</th>
-                                    <th>Type</th>
-                                    <th>Mandatory</th>
-                                    <th>Searchable</th>
-                                    <th>Fast Access</th>
-                                    <th>Options</th>
-                                    <th>Order</th>
-                                    <th class="text-center">Action</th>
-                                </tr>
-                            </thead>
+                        <div class="table-responsive">
 
-                            <tbody>
+                            <table class="table striped-table mb-0">
 
-                                <input type="hidden" id="deleteUrl" value="{{ route('lms.lead-fields.delete') }}">
-
-                                @foreach ($fields as $key => $field)
+                                <thead>
 
                                     <tr>
-
-                                        <td>{{ $key + 1 }}</td>
-
-                                        <!-- Label -->
-                                        <td>
-                                            <strong>{{ $field->name }}</strong>
-                                            <br>
-                                            <small class="text-muted">{{ $field->slug }}</small>
-                                        </td>
-
-                                        <!-- Type -->
-                                        <td>
-                                            <span class="badge bg-info">
-                                                {{ ucfirst($field->type) }}
-                                            </span>
-                                        </td>
-
-                                        <!-- Required -->
-                                        <td>
-                                            @if ($field->is_required)
-                                                <span class="badge bg-danger">Yes</span>
-                                            @else
-                                                <span class="badge bg-secondary">No</span>
-                                            @endif
-                                        </td>
-
-                                        <!-- Filterable -->
-                                        <td>
-                                            @if ($field->is_filterable)
-                                                <span class="badge bg-success">Yes</span>
-                                            @else
-                                                <span class="badge bg-secondary">No</span>
-                                            @endif
-                                        </td>
-
-                                        <!-- Promoted -->
-                                        <td>
-                                            @if ($field->is_promoted)
-                                                <span class="badge bg-primary">Yes</span>
-                                            @else
-                                                <span class="badge bg-secondary">No</span>
-                                            @endif
-                                        </td>
-
-                                        <!-- Options -->
-                                        <td>
-                                            @if ($field->type == 'select' && $field->options)
-                                                @php $opts = json_decode($field->options, true); @endphp
-
-                                                @foreach ($opts as $opt)
-                                                    <span class="badge bg-light text-dark border">
-                                                        {{ $opt }}
-                                                    </span>
-                                                @endforeach
-                                            @else
-                                                <span class="text-muted">—</span>
-                                            @endif
-                                        </td>
-
-                                        <!-- Sort -->
-                                        <td>{{ $field->sort_order }}</td>
-
-                                        <!-- Action -->
-                                        <td class="text-center">
-
-                                            <a href="{{ route('lms.lead-fields.edit', $field->id) }}"
-                                                class="w-32-px h-32-px bg-success-focus text-success-main rounded-circle d-inline-flex align-items-center justify-content-center">
-
-                                                <iconify-icon icon="lucide:edit"></iconify-icon>
-                                            </a>
-
-                                            <a href="javascript:void(0)"
-                                                class="deleteRecord w-32-px h-32-px bg-danger-focus text-danger-main rounded-circle d-inline-flex align-items-center justify-content-center"
-                                                data-id="{{ $field->id }}">
-
-                                                <iconify-icon icon="mingcute:delete-2-line"></iconify-icon>
-                                            </a>
-
-                                        </td>
-
+                                        <th>ID</th>
+                                        <th>Photo</th>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Cluster</th>
+                                        <th>Manager</th>
+                                        <th>Team Leader</th>
+                                        <th>Status</th>
+                                        <th class="text-center">Action</th>
                                     </tr>
 
-                                @endforeach
+                                </thead>
 
-                            </tbody>
 
-                        </table>
+                                <tbody>
+
+                                    <input type="hidden" id="deleteUrl" value="{{ route('lms.users.delete') }}">
+
+                                    @foreach ($users as $key => $user)
+
+                                        <tr>
+
+                                            <td>{{ $key + 1 }}</td>
+
+                                            <td>
+
+                                                <div class="d-flex align-items-center">
+
+                                                    @php
+                                                        $photo = optional($user->details)->profile_photo;
+                                                    @endphp
+
+                                                    <img style="width:50px;height:50px;object-fit:cover"
+                                                        src="{{ $photo ? asset('storage/'. $photo) : asset('images/default-user.png') }}"
+                                                        alt="Image" class="radius-8 me-12">
+
+                                                    <div class="flex-grow-1">
+
+                                                        <h6 class="text-md mb-0 fw-normal">
+                                                            {{ optional($user->details)->name ?? $user->name }}
+                                                        </h6>
+
+                                                        <span class="text-sm text-secondary-light fw-normal">
+                                                            {{ optional($user->details)->phone ?? 'N/A' }}
+                                                        </span>
+
+                                                    </div>
+
+                                                </div>
+
+                                            </td>
+
+                                            <td>{{ $user->email }}</td>
+
+
+                                            {{-- ROLE --}}
+                                           <td>
+
+@php
+$role = $user->getRoleNames()->first();
+@endphp
+
+<span class="bg-success-focus text-success-main px-24 py-4 rounded-pill text-sm">
+    {{ $role ?? 'N/A' }}
+</span>
+
+</td>
+                                            <td>{{ optional(optional(optional($user)->details)->cluster)->name }}</td>
+                                            <td>{{ optional(optional(optional($user)->details)->manager)->name }}</td>
+                                            <td>{{ optional(optional(optional($user)->details)->teamleader)->name }}</td>
+
+
+                                           
+                                            {{-- ACCOUNT STATUS --}}
+                                            <td>
+
+                                                @php $status = optional($user->details)->status; @endphp
+
+                                                @if ($status == '1')
+                                                    <span
+                                                        class="bg-success-focus text-success-main px-24 py-4 rounded-pill text-sm">Active</span>
+
+                                                @elseif ($status == '2')
+
+                                                    <span
+                                                        class="bg-warning-focus text-warning-main px-24 py-4 rounded-pill text-sm">
+                                                        Temporary
+                                                    </span>
+
+                                                    <br>
+
+                                                    <span class="mt-1 bg-danger text-white px-24 py-4 rounded-pill text-sm">
+
+                                                        Expire : {{ optional($user->details)->account_active_until }}
+
+                                                    </span>
+
+                                                @elseif ($status == '0')
+                                                    <span
+                                                        class="bg-danger-focus text-danger-main px-24 py-4 rounded-pill text-sm">Inactive</span>
+
+                                                @else
+                                                    <span class="text-muted">N/A</span>
+                                                @endif
+
+                                            </td>
+
+
+                                            {{-- ACTION --}}
+                                            <td class="text-center">
+
+                                                <a href="{{ route('lms.users.add', $user->id) }}"
+                                                    class="w-32-px h-32-px bg-success-focus text-success-main rounded-circle d-inline-flex align-items-center justify-content-center">
+
+                                                    <iconify-icon icon="lucide:edit"></iconify-icon>
+
+                                                </a>
+
+
+                                                <a href="javascript:void(0)"
+                                                    class="deleteRecord w-32-px h-32-px bg-danger-focus text-danger-main rounded-circle d-inline-flex align-items-center justify-content-center"
+                                                    data-id="{{ $user->id }}">
+
+                                                    <iconify-icon icon="mingcute:delete-2-line"></iconify-icon>
+
+                                                </a>
+
+                                            </td>
+
+                                        </tr>
+
+                                    @endforeach
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
 
                     </div>
 
                 </div>
 
             </div>
-
         </div>
+
     </div>
 
-</div>
+    @include('lms.common.footer')
 
 @endsection

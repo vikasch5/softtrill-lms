@@ -40,6 +40,13 @@
                     <span>Feedbacks</span>
                 </a>
             </li>
+            <li class="{{ Route::currentRouteName() == 'lms.users.list' ? 'active-page' : '' }}">
+                <a href="{{ route('lms.users.list') }}"
+                    class="{{ Route::currentRouteName() == 'lms.users.list' ? 'active-page' : '' }}">
+                    <iconify-icon icon="solar:home-2-outline" class="menu-icon"></iconify-icon>
+                    <span>Users</span>
+                </a>
+            </li>
 
         </ul>
     </div>

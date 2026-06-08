@@ -221,6 +221,261 @@
             color: #8a939d;
         }
 
+        .lv-activity-list {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            padding-left: 18px;
+        }
+
+        .lv-activity-list::before {
+            content: "";
+            position: absolute;
+            left: 7px;
+            top: 4px;
+            bottom: 4px;
+            width: 2px;
+            background: linear-gradient(180deg, #dbeafe 0%, #e5e7eb 100%);
+        }
+
+        .lv-activity-item {
+            position: relative;
+            background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+            border: 1px solid #e7eef6;
+            border-radius: 16px;
+            padding: 14px 14px 12px;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, .04);
+        }
+
+        .lv-activity-item::before {
+            content: "";
+            position: absolute;
+            left: -17px;
+            top: 22px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #2563eb;
+            box-shadow: 0 0 0 4px #eff6ff;
+        }
+
+        .lv-activity-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .lv-activity-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .lv-activity-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+            flex-shrink: 0;
+        }
+
+        .lv-activity-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: #111827;
+            line-height: 1.3;
+            margin: 0;
+        }
+
+        .lv-activity-sub {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 3px;
+        }
+
+        .lv-activity-time {
+            font-size: 11px;
+            color: #6b7280;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 999px;
+            padding: 5px 9px;
+            white-space: nowrap;
+        }
+
+        .lv-activity-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .lv-activity-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 9px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            background: #f8fafc;
+            color: #334155;
+            border: 1px solid #e2e8f0;
+        }
+
+        .lv-activity-details {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .lv-activity-detail {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 8px 10px;
+            min-width: 0;
+            flex: 0 1 auto;
+            max-width: 100%;
+        }
+
+        .lv-activity-detail-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: #94a3b8;
+            margin-bottom: 4px;
+        }
+
+        .lv-activity-detail-value {
+            font-size: 12px;
+            color: #0f172a;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .lv-followup-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .lv-followup-item {
+            border: 1px solid #e7eef6;
+            border-radius: 14px;
+            background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+            padding: 14px;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, .04);
+        }
+
+        .lv-followup-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .lv-followup-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .lv-followup-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            background: #ecfeff;
+            color: #0f766e;
+            border: 1px solid #a5f3fc;
+            flex-shrink: 0;
+        }
+
+        .lv-followup-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: #111827;
+            line-height: 1.3;
+            margin: 0;
+        }
+
+        .lv-followup-sub {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 3px;
+        }
+
+        .lv-followup-time {
+            font-size: 11px;
+            color: #6b7280;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 999px;
+            padding: 5px 9px;
+            white-space: nowrap;
+        }
+
+        .lv-followup-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .lv-followup-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 9px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            background: #f8fafc;
+            color: #334155;
+            border: 1px solid #e2e8f0;
+        }
+
+        .lv-followup-note {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+
+        .lv-followup-note-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: #94a3b8;
+            margin-bottom: 4px;
+        }
+
+        .lv-followup-note-text {
+            font-size: 12px;
+            color: #0f172a;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
         .lv-empty {
             text-align: center;
             padding: 24px;
@@ -651,13 +906,45 @@
 </div>
 
                     <div class="lv-tab-panel" id="panel-followup">
-                        <div class="lv-timeline">
+                        <div class="lv-followup-list">
                             @forelse($followups as $followup)
-                                <div class="lv-tl-item">
-                                    <div class="lv-tl-text">
-                                        {{ \Carbon\Carbon::parse($followup->followup_at)->format('d M Y, h:i A') }}
+                                @php
+                                    $followupAt = $followup->followup_at ? \Carbon\Carbon::parse($followup->followup_at) : null;
+                                    $followupStatus = $followupAt && $followupAt->isPast() ? 'Completed / Past' : 'Upcoming';
+                                @endphp
+                                <div class="lv-followup-item">
+                                    <div class="lv-followup-head">
+                                        <div class="lv-followup-title">
+                                            <span class="lv-followup-icon">
+                                                <i class="ri-calendar-schedule-line"></i>
+                                            </span>
+                                            <div>
+                                                <p class="lv-followup-name mb-0">Followup scheduled</p>
+                                                <div class="lv-followup-sub">
+                                                    {{ $followupAt ? $followupAt->format('l, d M Y') : 'Followup date not set' }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="lv-followup-time">
+                                            {{ $followupAt ? $followupAt->format('h:i A') : '--:--' }}
+                                        </div>
                                     </div>
-                                    <div class="lv-tl-meta">{{ $followup->remarks ?: 'No remarks.' }}</div>
+
+                                    <div class="lv-followup-tags">
+                                        <span class="lv-followup-tag">
+                                            <i class="ri-time-line"></i> {{ $followupStatus }}
+                                        </span>
+                                        @if($followupAt)
+                                            <span class="lv-followup-tag">
+                                                <i class="ri-calendar-check-line"></i> {{ $followupAt->format('d M Y, h:i A') }}
+                                            </span>
+                                        @endif
+                                    </div>
+
+                                    <div class="lv-followup-note">
+                                        <div class="lv-followup-note-label">Remarks</div>
+                                        <div class="lv-followup-note-text">{{ $followup->remarks ?: 'No remarks added for this followup.' }}</div>
+                                    </div>
                                 </div>
                             @empty
                                 <div class="lv-empty">No followups recorded.</div>
@@ -666,11 +953,109 @@
                     </div>
 
                     <div class="lv-tab-panel" id="panel-activity">
-                        <div class="lv-timeline">
+                        <div class="lv-activity-list">
                             @forelse($activities as $activity)
-                                <div class="lv-tl-item">
-                                    <div class="lv-tl-text">{{ ucfirst($activity->activity) }}</div>
-                                    <div class="lv-tl-meta">{{ $activity->created_at->format('d M Y, h:i A') }}</div>
+                                @php
+                                    $activityData = is_array($activity->new_value) ? $activity->new_value : [];
+                                    $activityTitle = match ($activity->activity) {
+                                        'lead_assigned' => 'Lead assigned',
+                                        'feedback_added' => 'Feedback added',
+                                        default => ucwords(str_replace('_', ' ', $activity->activity)),
+                                    };
+
+                                    $activityIcon = match ($activity->activity) {
+                                        'lead_assigned' => 'ri-user-shared-line',
+                                        'feedback_added' => 'ri-chat-4-line',
+                                        default => 'ri-history-line',
+                                    };
+
+                                    $activityBadge = match ($activity->activity) {
+                                        'lead_assigned' => 'Assignment',
+                                        'feedback_added' => 'Feedback',
+                                        default => 'Activity',
+                                    };
+
+                                    $activityDetails = [];
+
+                                    if ($activity->activity === 'lead_assigned') {
+                                        if (!empty($activityData['user_name'])) {
+                                            $activityDetails[] = [
+                                                'label' => 'Assigned To',
+                                                'value' => $activityData['user_name'],
+                                            ];
+                                        }
+                                    }
+
+                                    if ($activity->activity === 'feedback_added') {
+                                        $feedbackName = optional($feedbackLookup->firstWhere('id', $activityData['feedback_id'] ?? null))->name;
+                                        $subFeedbackName = optional($feedbackLookup->firstWhere('id', $activityData['sub_feedback_id'] ?? null))->name;
+
+                                        if ($feedbackName) {
+                                            $activityDetails[] = [
+                                                'label' => 'Feedback',
+                                                'value' => $feedbackName,
+                                            ];
+                                        }
+
+                                        if ($subFeedbackName) {
+                                            $activityDetails[] = [
+                                                'label' => 'Sub Feedback',
+                                                'value' => $subFeedbackName,
+                                            ];
+                                        }
+
+                                        if (!empty($activityData['followup_date'])) {
+                                            $activityDetails[] = [
+                                                'label' => 'Next Followup',
+                                                'value' => \Carbon\Carbon::parse($activityData['followup_date'])->format('d M Y, h:i A'),
+                                            ];
+                                        }
+
+                                        if (!empty($activityData['remarks'])) {
+                                            $activityDetails[] = [
+                                                'label' => 'Remarks',
+                                                'value' => $activityData['remarks'],
+                                            ];
+                                        }
+                                    }
+                                @endphp
+                                <div class="lv-activity-item">
+                                    <div class="lv-activity-head">
+                                        <div class="lv-activity-title">
+                                            <span class="lv-activity-icon">
+                                                <i class="{{ $activityIcon }}"></i>
+                                            </span>
+                                            <div>
+                                                <p class="lv-activity-name mb-0">{{ $activityTitle }}</p>
+                                                <div class="lv-activity-sub">
+                                                    {{ $activity->user?->name ?? 'System' }} updated this lead
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="lv-activity-time">
+                                            {{ $activity->created_at->format('d M Y, h:i A') }}
+                                        </div>
+                                    </div>
+
+                                    <div class="lv-activity-tags">
+                                        <span class="lv-activity-tag">
+                                            <i class="ri-flashlight-line"></i> {{ $activityBadge }}
+                                        </span>
+                                        <span class="lv-activity-tag">
+                                            <i class="ri-user-line"></i> {{ $activity->user?->name ?? 'System' }}
+                                        </span>
+                                    </div>
+
+                                    @if(!empty($activityDetails))
+                                        <div class="lv-activity-details">
+                                            @foreach($activityDetails as $detail)
+                                                <div class="lv-activity-detail">
+                                                    <div class="lv-activity-detail-label">{{ $detail['label'] }}</div>
+                                                    <div class="lv-activity-detail-value">{{ $detail['value'] }}</div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
                                 </div>
                             @empty
                                 <div class="lv-empty">No activity found.</div>
@@ -757,7 +1142,7 @@
         });
 
         // ── Char counter ──
-        var noteEl = document.getElementById('lv-note');
+        var noteEl = document.getElementById('lv-remarks');
         var countEl = document.getElementById('lv-note-count');
         if (noteEl && countEl) {
             noteEl.addEventListener('input', function () {
