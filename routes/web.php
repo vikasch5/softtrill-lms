@@ -29,10 +29,12 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/lead-save', [LeadController::class, 'storeOrUpdate'])->name('lms.leads.store');
     Route::post('/lead-delete', [LeadController::class, 'leadDelete'])->name('lms.leads.delete');
     Route::post('/lead-assign', [LeadController::class, 'assignLeads'])->name('lms.leads.assign');
+    Route::get('/api/supervisors-by-manager', [LeadController::class, 'getSupervisorsByManager'])->name('lms.api.supervisors-by-manager');
+    Route::get('/api/users-by-supervisor', [LeadController::class, 'getUsersBySupervisor'])->name('lms.api.users-by-supervisor');
     Route::get('/leads', [LeadController::class, 'leadsList'])->name('lms.leads');
     Route::get('/lead/{id}', [LeadController::class, 'leadsEdit'])->name('lms.lead.edit');
     Route::get('/lead-view/{id}', [LeadController::class, 'leadsView'])->name('lms.lead.view');
-    Route::post('/lead-save', [LeadController::class, 'updateLead'])->name('lms.leads.update');
+    Route::post('/lead-update', [LeadController::class, 'updateLead'])->name('lms.leads.update');
     Route::post('/lead-quick-save', [LeadController::class, 'quickUpdate'])->name('lms.leads.quick-update');
     Route::post('/lead-note-save', [LeadController::class, 'updateLead'])->name('lms.leads.note.store');
     Route::get('/feedback-list', [LeadController::class, 'feedbackList'])->name('lms.feedbacks.list');

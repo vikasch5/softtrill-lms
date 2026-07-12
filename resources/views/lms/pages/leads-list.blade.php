@@ -2,25 +2,6 @@
 
 @section('content')
 
-    @php
-        $supervisorsJson = $supervisors->map(function ($supervisor) {
-            return [
-                'id' => $supervisor->id,
-                'name' => $supervisor->name,
-                'manager_id' => optional($supervisor->details)->manager_id,
-            ];
-        })->values();
-
-        $usersJson = $users->map(function ($user) {
-            return [
-                'id' => $user->id,
-                'name' => $user->name,
-                'manager_id' => optional($user->details)->manager_id,
-                'supervisor_id' => optional($user->details)->teamleader_id,
-            ];
-        })->values();
-    @endphp
-
     <div class="dashboard-main-body">
 
         <div class="card">
@@ -38,10 +19,18 @@
                 </div>
 
                 <div class="d-flex gap-2 flex-wrap">
+                    
                     <button type="button" class="btn btn-outline-dark" id="openAssignLeadModal">
                         <i class="ri-user-settings-line"></i>
                         Assign Lead
                     </button>
+
+                       <a href="{{ route('lms.leads') }}" class="btn btn-primary">
+
+                        <i class="ri-arrow-left-line"></i>
+                        All Leads
+
+                    </a>
 
                     <a href="{{ route('lms.lead.import') }}" class="btn btn-primary">
 
@@ -206,7 +195,7 @@
                             Assign Selected Leads
                         </h5>
                         <small class="text-muted">
-                            Select manager, supervisor, and user for the chosen leads.
+                            Select manager → supervisor → user to assign leads.
                         </small>
                     </div>
 
@@ -217,35 +206,60 @@
                     <form id="assignLeadForm">
                         @csrf
 
+                        {{-- Step 1: Manager --}}
                         <div class="mb-3">
-                            <label for="assign_manager_id" class="form-label fw-semibold">Select Manager</label>
+                            <label for="assign_manager_id" class="form-label fw-semibold">
+                                <span class="badge bg-dark me-1">1</span> Select Manager
+                            </label>
                             <select id="assign_manager_id" name="manager_id" class="form-select">
-                                <option value="">Select Manager</option>
+                                <option value="">— Select Manager —</option>
                                 @foreach($managers as $manager)
                                     <option value="{{ $manager->id }}">{{ $manager->name }}</option>
                                 @endforeach
                             </select>
                         </div>
 
+                        {{-- Step 2: Supervisor --}}
                         <div class="mb-3">
-                            <label for="assign_supervisor_id" class="form-label fw-semibold">Select Supervisor</label>
-                            <select id="assign_supervisor_id" name="supervisor_id" class="form-select">
-                                <option value="">Select Supervisor</option>
-                            </select>
+                            <label for="assign_supervisor_id" class="form-label fw-semibold">
+                                <span class="badge bg-dark me-1">2</span> Select Supervisor
+                            </label>
+                            <div class="position-relative">
+                                <select id="assign_supervisor_id" name="supervisor_id" class="form-select" disabled>
+                                    <option value="">— Select Manager First —</option>
+                                </select>
+                                <div id="supervisorLoader" class="position-absolute top-50 end-0 translate-middle-y me-4 d-none">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <small id="supervisorCount" class="text-muted d-none"></small>
                         </div>
 
+                        {{-- Step 3: User --}}
                         <div class="mb-3">
-                            <label for="assign_user_id" class="form-label fw-semibold">Select User</label>
-                            <select id="assign_user_id" name="user_id" class="form-select" required>
-                                <option value="">Select User</option>
-                            </select>
+                            <label for="assign_user_id" class="form-label fw-semibold">
+                                <span class="badge bg-dark me-1">3</span> Select User
+                            </label>
+                            <div class="position-relative">
+                                <select id="assign_user_id" name="user_id" class="form-select" disabled required>
+                                    <option value="">— Select Supervisor First —</option>
+                                </select>
+                                <div id="userLoader" class="position-absolute top-50 end-0 translate-middle-y me-4 d-none">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <small id="userCount" class="text-muted d-none"></small>
                         </div>
                     </form>
                 </div>
 
                 <div class="modal-footer border-0 pt-0">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-dark" id="submitAssignLead">
+                    <button type="button" class="btn btn-dark" id="submitAssignLead" disabled>
                         Assign Lead
                     </button>
                 </div>
@@ -259,8 +273,10 @@
     <script>
         $(function () {
             const assignLeadModal = new bootstrap.Modal(document.getElementById('assignLeadModal'));
-            const supervisors = @json($supervisorsJson);
-            const users = @json($usersJson);
+
+            // Active AJAX requests (for aborting on rapid changes)
+            let supervisorXhr = null;
+            let userXhr = null;
 
             function getSelectedLeadIds() {
                 return $('.lead-checkbox:checked').map(function () {
@@ -268,37 +284,124 @@
                 }).get();
             }
 
-            function fillSupervisorOptions(managerId) {
-                const filteredSupervisors = managerId
-                    ? supervisors.filter(item => String(item.manager_id) === String(managerId))
-                    : supervisors;
+            /**
+             * Reset a select to its disabled/placeholder state
+             */
+            function resetSelect($select, placeholder) {
+                $select.html(`<option value="">${placeholder}</option>`);
+                $select.prop('disabled', true);
+            }
 
-                let options = '<option value="">Select Supervisor</option>';
+            /**
+             * Populate a select with fetched data
+             */
+            function populateSelect($select, data, placeholder) {
+                let options = `<option value="">— ${placeholder} —</option>`;
 
-                filteredSupervisors.forEach(function (item) {
+                data.forEach(function (item) {
                     options += `<option value="${item.id}">${item.name}</option>`;
                 });
 
-                $('#assign_supervisor_id').html(options);
+                $select.html(options);
+                $select.prop('disabled', data.length === 0);
             }
 
-            function fillUserOptions(managerId, supervisorId) {
-                const filteredUsers = users.filter(function (item) {
-                    const managerMatch = !managerId || String(item.manager_id) === String(managerId);
-                    const supervisorMatch = !supervisorId || String(item.supervisor_id) === String(supervisorId);
+            /**
+             * Fetch supervisors by manager (AJAX)
+             */
+            function fetchSupervisors(managerId) {
+                // Abort any pending request
+                if (supervisorXhr) supervisorXhr.abort();
 
-                    return managerMatch && supervisorMatch;
+                // Reset supervisor & user dropdowns
+                resetSelect($('#assign_supervisor_id'), '— Loading... —');
+                resetSelect($('#assign_user_id'), '— Select Supervisor First —');
+                $('#supervisorCount').addClass('d-none');
+                $('#userCount').addClass('d-none');
+                $('#submitAssignLead').prop('disabled', true);
+
+                if (!managerId) {
+                    resetSelect($('#assign_supervisor_id'), '— Select Manager First —');
+                    return;
+                }
+
+                // Show loader
+                $('#supervisorLoader').removeClass('d-none');
+
+                supervisorXhr = $.ajax({
+                    url: '{{ route("lms.api.supervisors-by-manager") }}',
+                    method: 'GET',
+                    data: { manager_id: managerId },
+                    success: function (data) {
+                        populateSelect($('#assign_supervisor_id'), data, 'Select Supervisor');
+
+                        // Show count
+                        if (data.length > 0) {
+                            $('#supervisorCount').text(data.length + ' supervisor(s) found').removeClass('d-none');
+                        } else {
+                            $('#supervisorCount').text('No supervisors found under this manager').removeClass('d-none');
+                        }
+                    },
+                    error: function (xhr) {
+                        if (xhr.statusText !== 'abort') {
+                            resetSelect($('#assign_supervisor_id'), '— Error loading —');
+                        }
+                    },
+                    complete: function () {
+                        $('#supervisorLoader').addClass('d-none');
+                    }
                 });
-
-                let options = '<option value="">Select User</option>';
-
-                filteredUsers.forEach(function (item) {
-                    options += `<option value="${item.id}">${item.name}</option>`;
-                });
-
-                $('#assign_user_id').html(options);
             }
 
+            /**
+             * Fetch users by supervisor (AJAX)
+             */
+            function fetchUsers(supervisorId, managerId) {
+                // Abort any pending request
+                if (userXhr) userXhr.abort();
+
+                // Reset user dropdown
+                resetSelect($('#assign_user_id'), '— Loading... —');
+                $('#userCount').addClass('d-none');
+                $('#submitAssignLead').prop('disabled', true);
+
+                if (!supervisorId) {
+                    resetSelect($('#assign_user_id'), '— Select Supervisor First —');
+                    return;
+                }
+
+                // Show loader
+                $('#userLoader').removeClass('d-none');
+
+                userXhr = $.ajax({
+                    url: '{{ route("lms.api.users-by-supervisor") }}',
+                    method: 'GET',
+                    data: {
+                        supervisor_id: supervisorId,
+                        manager_id: managerId
+                    },
+                    success: function (data) {
+                        populateSelect($('#assign_user_id'), data, 'Select User');
+
+                        // Show count
+                        if (data.length > 0) {
+                            $('#userCount').text(data.length + ' user(s) found').removeClass('d-none');
+                        } else {
+                            $('#userCount').text('No users found under this supervisor').removeClass('d-none');
+                        }
+                    },
+                    error: function (xhr) {
+                        if (xhr.statusText !== 'abort') {
+                            resetSelect($('#assign_user_id'), '— Error loading —');
+                        }
+                    },
+                    complete: function () {
+                        $('#userLoader').addClass('d-none');
+                    }
+                });
+            }
+
+            // Select All checkbox
             $('#select-all').on('change', function () {
                 $('.lead-checkbox').prop('checked', $(this).is(':checked'));
             });
@@ -310,6 +413,7 @@
                 $('#select-all').prop('checked', totalCheckboxes > 0 && totalCheckboxes === checkedCheckboxes);
             });
 
+            // Open Modal
             $('#openAssignLeadModal').on('click', function () {
                 const selectedLeadIds = getSelectedLeadIds();
 
@@ -318,22 +422,32 @@
                     return;
                 }
 
+                // Reset form to initial state
                 $('#assignLeadForm')[0].reset();
-                fillSupervisorOptions('');
-                fillUserOptions('', '');
+                resetSelect($('#assign_supervisor_id'), '— Select Manager First —');
+                resetSelect($('#assign_user_id'), '— Select Supervisor First —');
+                $('#supervisorCount, #userCount').addClass('d-none');
+                $('#submitAssignLead').prop('disabled', true);
+
                 assignLeadModal.show();
             });
 
+            // Manager changed → fetch supervisors
             $('#assign_manager_id').on('change', function () {
-                const managerId = $(this).val();
-                fillSupervisorOptions(managerId);
-                fillUserOptions(managerId, '');
+                fetchSupervisors($(this).val());
             });
 
+            // Supervisor changed → fetch users
             $('#assign_supervisor_id').on('change', function () {
-                fillUserOptions($('#assign_manager_id').val(), $(this).val());
+                fetchUsers($(this).val(), $('#assign_manager_id').val());
             });
 
+            // User changed → enable/disable submit button
+            $('#assign_user_id').on('change', function () {
+                $('#submitAssignLead').prop('disabled', !$(this).val());
+            });
+
+            // Submit
             $('#submitAssignLead').on('click', function () {
                 const selectedLeadIds = getSelectedLeadIds();
                 const userId = $('#assign_user_id').val();
@@ -348,6 +462,11 @@
                     notify_it('error', 'Please select a user.');
                     return;
                 }
+
+                const $btn = $(this);
+                $btn.prop('disabled', true).html(
+                    '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Assigning...'
+                );
 
                 $.ajax({
                     url: '{{ route('lms.leads.assign') }}',
@@ -382,9 +501,13 @@
                         }
 
                         notify_it('error', message);
+                    },
+                    complete: function () {
+                        $btn.prop('disabled', false).html('Assign Lead');
                     }
                 });
             });
         });
     </script>
 @endsection
+

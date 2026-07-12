@@ -9,8 +9,17 @@
             <div class="card shadow-sm border-0">
 
                 <!-- HEADER -->
-                <div class="card-header">
+                <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Create Lead</h5>
+                    <div class="d-flex gap-2 flex-wrap">
+
+                     <a href="{{ route('lms.leads') }}" class="btn btn-primary">
+
+                        <i class="ri-arrow-left-line"></i>
+                        All Leads
+
+                    </a>
+                </div>
                 </div>
 
                 <!-- BODY -->

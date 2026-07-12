@@ -6,11 +6,27 @@
 
         <div class="card">
 
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
 
                 <h5 class="mb-0">
                     Edit Lead #{{ $lead->id }}
                 </h5>
+                <div class="d-flex gap-2 flex-wrap">
+
+                    <a href="{{ route('lms.leads') }}" class="btn btn-primary">
+
+                        <i class="ri-arrow-left-line"></i>
+                        All Leads
+
+                    </a>
+
+                    <a href="{{ route('lms.leads.add') }}" class="btn btn-primary">
+
+                        <i class="ri-add-line"></i>
+                        Add Lead
+
+                    </a>
+                </div>
 
             </div>
 

@@ -23,9 +23,11 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class LeadController extends Controller
 {
-
     public function leadsList(Request $request)
     {
+        $user = auth()->user();
+        $visibleUserIds = $this->getVisibleUserIds($user);
+
         $query = Lead::query()
             ->select([
                 'id',
@@ -38,8 +40,15 @@ class LeadController extends Controller
                 'created_at',
                 'added_by',
             ])
-            ->with(['list', 'assignedTo'])
-            ->where('added_by', auth()->id());
+            ->with(['list', 'assignedTo']);
+
+        // Admin sees everything, others see leads within their hierarchy
+        if (!$user->hasRole('Admin')) {
+            $query->where(function ($q) use ($visibleUserIds) {
+                $q->whereIn('assigned_to', $visibleUserIds)
+                    ->orWhereIn('added_by', $visibleUserIds);
+            });
+        }
 
         if ($request->filled('list_id')) {
             $query->where('list_id', $request->list_id);
@@ -54,21 +63,76 @@ class LeadController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $supervisors = User::role('TeamLeader')
-            ->with('details')
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
-        $users = User::role('Agent')
-            ->with('details')
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
         return view(
             'lms.pages.leads-list',
-            compact('leads', 'managers', 'supervisors', 'users')
+            compact('leads', 'managers')
         );
     }
+
+    /**
+     * Get all user IDs visible to the given user based on the org hierarchy.
+     *
+     * Admin     → all users
+     * Manager   → self + TeamLeaders under them + Agents under those TeamLeaders
+     * Cluster   → self + users with matching cluster_id
+     * TeamLeader→ self + Agents under them
+     * Agent     → self only
+     */
+    private function getVisibleUserIds($user): array
+    {
+        $userId = $user->id;
+
+        // Admin can see everything (handled in caller, but return empty as fallback)
+        if ($user->hasRole('Admin')) {
+            return [];
+        }
+
+        $visibleIds = [$userId];
+
+        if ($user->hasRole('Manager')) {
+            // TeamLeaders whose manager_id = this manager
+            $teamLeaderIds = UserDetails::where('manager_id', $userId)
+                ->pluck('user_id')
+                ->toArray();
+
+            $visibleIds = array_merge($visibleIds, $teamLeaderIds);
+
+            // Agents whose teamleader_id is one of those TeamLeaders
+            if (!empty($teamLeaderIds)) {
+                $agentIds = UserDetails::whereIn('teamleader_id', $teamLeaderIds)
+                    ->pluck('user_id')
+                    ->toArray();
+
+                $visibleIds = array_merge($visibleIds, $agentIds);
+            }
+
+            // Also include agents directly under this manager
+            $directAgentIds = UserDetails::where('manager_id', $userId)
+                ->pluck('user_id')
+                ->toArray();
+
+            $visibleIds = array_merge($visibleIds, $directAgentIds);
+        } elseif ($user->hasRole('Cluster')) {
+            // Users in the same cluster
+            $clusterUserIds = UserDetails::where('cluster_id', $userId)
+                ->pluck('user_id')
+                ->toArray();
+
+            $visibleIds = array_merge($visibleIds, $clusterUserIds);
+        } elseif ($user->hasRole('TeamLeader')) {
+            // Agents whose teamleader_id = this team leader
+            $agentIds = UserDetails::where('teamleader_id', $userId)
+                ->pluck('user_id')
+                ->toArray();
+
+            $visibleIds = array_merge($visibleIds, $agentIds);
+        }
+
+        // Agent or any other role → only self (already in $visibleIds)
+
+        return array_values(array_unique($visibleIds));
+    }
+
     public function fieldList()
     {
         $lists = DB::table('lead_lists as l')
@@ -94,6 +158,7 @@ class LeadController extends Controller
             compact('lists')
         );
     }
+
     public function fieldAddIndex($listId = null)
     {
         $list = null;
@@ -101,7 +166,6 @@ class LeadController extends Controller
         $fieldsData = collect();
 
         if ($listId) {
-
             $list = DB::table('lead_lists')
                 ->where('id', $listId)
                 ->first();
@@ -115,7 +179,6 @@ class LeadController extends Controller
         }
 
         if ($fieldsData->isEmpty()) {
-
             $fieldsData = collect([
                 (object) [
                     'id' => null,
@@ -145,23 +208,21 @@ class LeadController extends Controller
         ]);
 
         try {
-
             DB::beginTransaction();
 
             $tenantId = auth()->id();
             $listId = '1';
 
             foreach ($request->fields as $field) {
-
                 if (empty(trim($field['name'] ?? ''))) {
                     continue;
                 }
 
                 /*
-                |--------------------------------------------------------------------------
-                | Generate Slug
-                |--------------------------------------------------------------------------
-                */
+                 * |--------------------------------------------------------------------------
+                 * | Generate Slug
+                 * |--------------------------------------------------------------------------
+                 */
 
                 $slug = Str::slug($field['name'], '_');
 
@@ -182,10 +243,10 @@ class LeadController extends Controller
                 }
 
                 /*
-                |--------------------------------------------------------------------------
-                | Options
-                |--------------------------------------------------------------------------
-                */
+                 * |--------------------------------------------------------------------------
+                 * | Options
+                 * |--------------------------------------------------------------------------
+                 */
 
                 $options = null;
 
@@ -195,7 +256,6 @@ class LeadController extends Controller
                         ['select', 'radio', 'checkbox']
                     )
                 ) {
-
                     $options = collect(
                         explode(',', $field['options'] ?? '')
                     )
@@ -210,10 +270,10 @@ class LeadController extends Controller
                 }
 
                 /*
-                |--------------------------------------------------------------------------
-                | Save
-                |--------------------------------------------------------------------------
-                */
+                 * |--------------------------------------------------------------------------
+                 * | Save
+                 * |--------------------------------------------------------------------------
+                 */
 
                 LeadField::updateOrCreate(
                     [
@@ -223,22 +283,14 @@ class LeadController extends Controller
                         'added_by' => auth()->id(),
                         'tenant_id' => $tenantId,
                         'list_id' => $listId,
-
                         'name' => trim($field['name']),
                         'slug' => $slug,
-
                         'type' => $field['type'] ?? 'text',
-
                         'is_required' => (bool) ($field['is_required'] ?? 0),
-
                         'is_filterable' => (bool) ($field['is_filterable'] ?? 0),
-
                         'is_searchable' => (bool) ($field['is_searchable'] ?? 0),
-
                         'is_unique' => (bool) ($field['is_unique'] ?? 0),
-
                         'options' => $options,
-
                         'sort_order' => (int) ($field['sort_order'] ?? 0),
                     ]
                 );
@@ -250,9 +302,7 @@ class LeadController extends Controller
                 'success' => true,
                 'message' => 'Fields saved successfully'
             ]);
-
         } catch (\Throwable $e) {
-
             DB::rollBack();
 
             return response()->json([
@@ -289,7 +339,6 @@ class LeadController extends Controller
         ];
 
         $callback = function () use ($leadFields) {
-
             $file = fopen('php://output', 'w');
 
             // Default Columns
@@ -316,9 +365,7 @@ class LeadController extends Controller
 
             // Dynamic Sample Data
             foreach ($leadFields as $field) {
-
                 switch ($field->type) {
-
                     case 'email':
                         $sampleRow[] = 'john@example.com';
                         break;
@@ -350,7 +397,6 @@ class LeadController extends Controller
                     case 'select':
                     case 'radio':
                     case 'checkbox':
-
                         $options = json_decode($field->options, true);
 
                         $sampleRow[] = $options[0] ?? 'Option1';
@@ -388,34 +434,29 @@ class LeadController extends Controller
         DB::beginTransaction();
 
         try {
-
             $tenantId = auth()->id();
             $userId = auth()->id();
 
             /*
-            |--------------------------------------------------------------------------
-            | Existing List
-            |--------------------------------------------------------------------------
-            */
+             * |--------------------------------------------------------------------------
+             * | Existing List
+             * |--------------------------------------------------------------------------
+             */
 
             if ($request->filled('list_id')) {
-
                 $list = LeadList::findOrFail($request->list_id);
-
             } else {
-
                 /*
-                |--------------------------------------------------------------------------
-                | Auto Create List
-                |--------------------------------------------------------------------------
-                */
+                 * |--------------------------------------------------------------------------
+                 * | Auto Create List
+                 * |--------------------------------------------------------------------------
+                 */
 
                 $file = $request->file('file');
 
                 $rows = Excel::toArray([], $file);
 
                 if (empty($rows[0]) || empty($rows[0][0])) {
-
                     throw new \Exception(
                         'File does not contain header row.'
                     );
@@ -434,73 +475,60 @@ class LeadController extends Controller
                     'created_by' => $userId,
                 ]);
 
-
                 /*
-                |--------------------------------------------------------------------------
-                | Auto Create Fields
-                |--------------------------------------------------------------------------
-                */
+                 * |--------------------------------------------------------------------------
+                 * | Auto Create Fields
+                 * |--------------------------------------------------------------------------
+                 */
 
                 $sortOrder = 1;
 
                 foreach ($headers as $header) {
-
                     LeadField::create([
-
                         'added_by' => auth()->id(),
                         'tenant_id' => $tenantId,
                         'list_id' => $list->id,
-
                         'name' => ucwords(
                             str_replace('_', ' ', $header)
                         ),
-
                         'slug' => Str::slug(
                             $header,
                             '_'
                         ),
-
                         'type' => 'text',
-
                         'is_required' => 0,
                         'is_filterable' => 1,
                         'is_searchable' => 1,
                         'is_unique' => 0,
-
                         'sort_order' => $sortOrder++,
                     ]);
                 }
             }
 
             /*
-            |--------------------------------------------------------------------------
-            | Import Log
-            |--------------------------------------------------------------------------
-            */
+             * |--------------------------------------------------------------------------
+             * | Import Log
+             * |--------------------------------------------------------------------------
+             */
 
             $import = LeadImportFile::create([
                 'tenant_id' => $tenantId,
-
                 'list_id' => $list->id,
-
                 'file_name' => $request
                     ->file('file')
                     ->store('lead-imports'),
-
                 'original_name' => $request
                     ->file('file')
                     ->getClientOriginalName(),
-
                 'status' => 'processing',
-
                 'uploaded_by' => $userId,
             ]);
 
             /*
-            |--------------------------------------------------------------------------
-            | Import Leads
-            |--------------------------------------------------------------------------
-            */
+             * |--------------------------------------------------------------------------
+             * | Import Leads
+             * |--------------------------------------------------------------------------
+             */
 
             Excel::import(
                 new LeadsImport(
@@ -519,9 +547,7 @@ class LeadController extends Controller
                 'message' => 'Leads imported successfully.',
                 'list_id' => $list->id,
             ]);
-
         } catch (\Throwable $e) {
-
             DB::rollBack();
 
             return response()->json([
@@ -543,10 +569,9 @@ class LeadController extends Controller
         DB::beginTransaction();
 
         try {
-
             $tenantId = auth()->user()->tenant_id ?? null;
             $userId = auth()->id();
-            $listId = $request->lead_import_file_id; // your list
+            $listId = $request->lead_import_file_id;  // your list
 
             // =========================
             // VALIDATION
@@ -604,13 +629,11 @@ class LeadController extends Controller
             $leadFields = LeadField::select('id', 'slug', 'is_filterable')->get()->keyBy('slug');
 
             foreach ($request->custom ?? [] as $slug => $value) {
-
                 // store in JSON (ALL fields)
                 $customFields[$slug] = $value;
 
                 // store in table only if filterable
                 if (isset($leadFields[$slug]) && $leadFields[$slug]->is_filterable) {
-
                     $filterableInsert[] = [
                         'field_id' => $leadFields[$slug]->id,
                         'value' => is_array($value) ? json_encode($value) : $value,
@@ -650,9 +673,7 @@ class LeadController extends Controller
                 'message' => $id ? 'Lead Updated Successfully' : 'Lead Created Successfully',
                 'lead_id' => $lead->id
             ]);
-
         } catch (\Exception $e) {
-
             DB::rollBack();
 
             return response()->json([
@@ -693,17 +714,13 @@ class LeadController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'phone_number' => $request->phone_number,
-
             'data' => $leadData,
-
             'email_index' =>
                 $leadData['email']
-                ?? null,
-
+                    ?? null,
             'phone_index' =>
                 $leadData['phone']
-                ?? null,
-
+                    ?? null,
         ]);
 
         return response()->json([
@@ -755,7 +772,8 @@ class LeadController extends Controller
             ->orderBy('name')
             ->get();
 
-        $feedbacks = Feedback::where('added_by', auth()->id())->where('parent_id', null)
+        $feedbacks = Feedback::where('added_by', auth()->id())
+            ->where('parent_id', null)
             ->orderBy('name')
             ->get();
 
@@ -775,7 +793,6 @@ class LeadController extends Controller
                 'feedbackLookup'
             )
         );
-
     }
 
     public function leadDelete(Request $request)
@@ -796,7 +813,8 @@ class LeadController extends Controller
                 $leadQuery->where('tenant_id', $tenantId);
             } else {
                 $leadQuery->where(function ($query) {
-                    $query->where('added_by', auth()->id())
+                    $query
+                        ->where('added_by', auth()->id())
                         ->orWhere('created_by', auth()->id())
                         ->orWhere('assigned_to', auth()->id());
                 });
@@ -818,7 +836,6 @@ class LeadController extends Controller
             DB::table('lead_field_values')
                 ->where('lead_id', $lead->id)
                 ->delete();
-
 
             $lead->delete();
 
@@ -982,7 +999,6 @@ class LeadController extends Controller
             'status' => true,
             'message' => 'Feedback deleted successfully'
         ]);
-
     }
 
     public function subFeedbacks($feedbackId)
@@ -1030,12 +1046,9 @@ class LeadController extends Controller
                 'tenant_id' => auth()->id(),
                 'lead_id' => $request->lead_id,
                 'added_by' => auth()->id(),
-
                 'activity' => 'feedback_added',
-
                 'old_value' => null,
                 'user_id' => auth()->id(),
-
                 'new_value' => json_encode([
                     'feedback_id' => $request->feedback_id,
                     'sub_feedback_id' => $request->sub_feedback_id,
@@ -1049,7 +1062,6 @@ class LeadController extends Controller
                 'success' => true,
                 'message' => 'Feedback saved successfully.'
             ]);
-
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json([
@@ -1057,7 +1069,49 @@ class LeadController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         }
-
     }
 
+    /**
+     * Get supervisors (TeamLeaders) by manager ID.
+     * Returns all supervisors if no manager_id is provided.
+     */
+    public function getSupervisorsByManager(Request $request)
+    {
+        $query = User::role('TeamLeader')
+            ->select('users.id', 'users.name');
+
+        if ($request->filled('manager_id')) {
+            $query->whereHas('details', function ($q) use ($request) {
+                $q->where('manager_id', $request->manager_id);
+            });
+        }
+
+        $supervisors = $query->orderBy('name')->get();
+
+        return response()->json($supervisors);
+    }
+
+    /**
+     * Get users (Agents) by supervisor (TeamLeader) ID.
+     * Optionally also filters by manager_id.
+     */
+    public function getUsersBySupervisor(Request $request)
+    {
+        $query = User::role('Agent')
+            ->select('users.id', 'users.name');
+
+        if ($request->filled('supervisor_id')) {
+            $query->whereHas('details', function ($q) use ($request) {
+                $q->where('teamleader_id', $request->supervisor_id);
+            });
+        } elseif ($request->filled('manager_id')) {
+            $query->whereHas('details', function ($q) use ($request) {
+                $q->where('manager_id', $request->manager_id);
+            });
+        }
+
+        $users = $query->orderBy('name')->get();
+
+        return response()->json($users);
+    }
 }
