@@ -26,23 +26,23 @@
                     <span>Leads</span>
                 </a>
             </li>
-            <li class="{{ in_array(Route::currentRouteName(), ['lms.lead-fields.list']) ? 'active-page' : '' }}">
+            <li class="{{ in_array(Route::currentRouteName(), ['lms.lead-fields.list','lms.lead-fields.add']) ? 'active-page' : '' }}">
                 <a href="{{ route('lms.lead-fields.list') }}"
-                    class="{{ in_array(Route::currentRouteName(), ['lms.lead-fields.list']) ? 'active-page' : '' }}">
+                    class="{{ in_array(Route::currentRouteName(), ['lms.lead-fields.list','lms.lead-fields.add']) ? 'active-page' : '' }}">
                     <iconify-icon icon="solar:checklist-minimalistic-outline" class="menu-icon"></iconify-icon>
                     <span>Fields</span>
                 </a>
             </li>
-            <li class="{{ Route::currentRouteName() == 'lms.feedbacks.list' ? 'active-page' : '' }}">
+            <li class="{{ in_array( Route::currentRouteName(), ['lms.feedbacks.list', 'lms.feedbacks.add']) ? 'active-page' : '' }}">
                 <a href="{{ route('lms.feedbacks.list') }}"
-                    class="{{ Route::currentRouteName() == 'lms.feedbacks.list' ? 'active-page' : '' }}">
+                    class="{{ in_array(Route::currentRouteName(), ['lms.feedbacks.list', 'lms.feedbacks.add']) ? 'active-page' : '' }}">
                     <iconify-icon icon="solar:chat-round-dots-outline" class="menu-icon"></iconify-icon>
                     <span>Feedbacks</span>
                 </a>
             </li>
-            <li class="{{ Route::currentRouteName() == 'lms.users.list' ? 'active-page' : '' }}">
+            <li class="{{ in_array(Route::currentRouteName(), ['lms.users.list','lms.users.add','lms.users.edit']) ? 'active-page' : '' }}">
                 <a href="{{ route('lms.users.list') }}"
-                    class="{{ Route::currentRouteName() == 'lms.users.list' ? 'active-page' : '' }}">
+                    class="{{ in_array(Route::currentRouteName(), ['lms.users.list','lms.users.add','lms.users.edit']) ? 'active-page' : '' }}">
                     <iconify-icon icon="solar:users-group-rounded-outline" class="menu-icon"></iconify-icon>
                     <span>Users</span>
                 </a>

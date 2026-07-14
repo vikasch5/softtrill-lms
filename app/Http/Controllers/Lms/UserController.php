@@ -36,9 +36,11 @@ class UserController extends Controller
         $clusters = User::role('Cluster')->get();
 
         $roles = Role::whereNotIn('name', ['Admin'])->get();
+        $userRole = $id ? $user->getRoleNames()->first() : null;
 
         return view('lms.pages.users-add', compact(
             'user',
+            'userRole',
             'roles',
             'clusters',
             'managers',

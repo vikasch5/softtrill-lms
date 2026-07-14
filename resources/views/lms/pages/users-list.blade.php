@@ -46,7 +46,7 @@
 
                                     <input type="hidden" id="deleteUrl" value="{{ route('lms.users.delete') }}">
 
-                                    @foreach ($users as $key => $user)
+                                    @forelse ($users as $key => $user)
 
                                         <tr>
 
@@ -159,7 +159,11 @@ $role = $user->getRoleNames()->first();
 
                                         </tr>
 
-                                    @endforeach
+                                    @empty
+                                        <tr>
+                                            <td colspan="9" class="text-center text-muted py-4">No users found.</td>
+                                        </tr>
+                                    @endforelse
 
                                 </tbody>
 
