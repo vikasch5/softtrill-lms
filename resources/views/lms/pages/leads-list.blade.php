@@ -19,18 +19,22 @@
                 </div>
 
                 <div class="d-flex gap-2 flex-wrap">
-                    
+
+                    @role('Admin|Manager|Cluster|TeamLeader')
                     <button type="button" class="btn btn-outline-dark" id="openAssignLeadModal">
                         <i class="ri-user-settings-line"></i>
                         Assign Lead
                     </button>
+                    @endrole
 
-                       <a href="{{ route('lms.leads') }}" class="btn btn-primary">
+                    @role('Admin|Manager|Cluster')
+                    <a href="{{ route('lms.leads') }}" class="btn btn-primary">
 
                         <i class="ri-arrow-left-line"></i>
                         All Leads
 
                     </a>
+
 
                     <a href="{{ route('lms.lead.import') }}" class="btn btn-primary">
 
@@ -38,11 +42,174 @@
                         Import Leads
 
                     </a>
+                    @endrole
                 </div>
 
             </div>
 
             <div class="card-body">
+
+                <form method="GET" action="{{ route('lms.leads') }}" class="mb-4" novalidate>
+                    @php
+                        $hasActiveFilters = request()->filled('list_id')
+                            || request()->filled('name')
+                            || request()->filled('phone_number')
+                            || request()->filled('email')
+                            || request()->filled('status')
+                            || collect(request('filters', []))->flatten()->filter(fn($value) => $value !== null && $value !== '')->isNotEmpty();
+                    @endphp
+
+                    <div class="border rounded-3 bg-light-subtle overflow-hidden">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-3">
+                            <div>
+                                <h6 class="mb-1">Lead Filters</h6>
+                                <small class="text-muted">Open filters only when needed.</small>
+                            </div>
+                            <div class="d-flex gap-2 flex-wrap">
+                                @if($hasActiveFilters)
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2">
+                                        Filters Active
+                                    </span>
+                                @endif
+                                <button
+                                    class="btn btn-outline-dark"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#leadFiltersCollapse"
+                                    aria-expanded="{{ $hasActiveFilters ? 'true' : 'false' }}"
+                                    aria-controls="leadFiltersCollapse">
+                                    <i class="ri-filter-3-line me-1"></i>
+                                    {{ $hasActiveFilters ? 'Show / Hide Filters' : 'Open Filters' }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="collapse {{ $hasActiveFilters ? 'show' : '' }}" id="leadFiltersCollapse">
+                            <div class="border-top p-3">
+                                <div class="d-flex justify-content-end gap-2 flex-wrap mb-3">
+                                    <a href="{{ route('lms.leads') }}" class="btn btn-light border">Reset</a>
+                                    <button type="submit" class="btn btn-primary">Apply Filters</button>
+                                </div>
+
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label fw-semibold">List</label>
+                                        <select name="list_id" class="form-select">
+                                            <option value="">All Lists</option>
+                                            @foreach($lists as $list)
+                                                <option value="{{ $list->id }}" {{ request('list_id') == $list->id ? 'selected' : '' }}>
+                                                    {{ $list->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <label class="form-label fw-semibold">Lead Name</label>
+                                        <input type="text" name="name" value="{{ request('name') }}" class="form-control"
+                                            placeholder="Search by name">
+                                    </div>
+
+                                    <div class="col-md-2">
+                                        <label class="form-label fw-semibold">Phone</label>
+                                        <input type="text" name="phone_number" value="{{ request('phone_number') }}" class="form-control"
+                                            placeholder="Phone number">
+                                    </div>
+
+                                    <div class="col-md-2">
+                                        <label class="form-label fw-semibold">Email</label>
+                                        <input type="text" name="email" value="{{ request('email') }}" class="form-control"
+                                            placeholder="Email">
+                                    </div>
+
+                                    <div class="col-md-2">
+                                        <label class="form-label fw-semibold">Status</label>
+                                        <select name="status" class="form-select">
+                                            <option value="">All Status</option>
+                                            @foreach(['new', 'contacted', 'qualified', 'interested', 'followup'] as $status)
+                                                <option value="{{ $status }}" {{ request('status') === $status ? 'selected' : '' }}>
+                                                    {{ ucfirst($status) }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                    @foreach($filterableFields as $field)
+                                        @php
+                                            $selectedFilterValue = request('filters.' . $field->slug);
+                                            $fieldOptions = $field->options ? json_decode($field->options, true) : [];
+                                        @endphp
+
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-semibold">{{ $field->name }}</label>
+
+                                            @if(in_array($field->type, ['text', 'textarea', 'email', 'phone'], true))
+                                                <input type="text"
+                                                    name="filters[{{ $field->slug }}]"
+                                                    value="{{ is_array($selectedFilterValue) ? '' : $selectedFilterValue }}"
+                                                    class="form-control"
+                                                    placeholder="Enter {{ strtolower($field->name) }}">
+
+                                            @elseif(in_array($field->type, ['number', 'decimal'], true))
+                                                <input type="number"
+                                                    step="any"
+                                                    name="filters[{{ $field->slug }}]"
+                                                    value="{{ is_array($selectedFilterValue) ? '' : $selectedFilterValue }}"
+                                                    class="form-control"
+                                                    placeholder="Enter {{ strtolower($field->name) }}">
+
+                                            @elseif(in_array($field->type, ['date', 'datetime'], true))
+                                                <input type="{{ $field->type === 'datetime' ? 'datetime-local' : 'date' }}"
+                                                    name="filters[{{ $field->slug }}]"
+                                                    value="{{ is_array($selectedFilterValue) ? '' : $selectedFilterValue }}"
+                                                    class="form-control">
+
+                                            @elseif(in_array($field->type, ['select', 'radio'], true))
+                                                <select name="filters[{{ $field->slug }}]" class="form-select">
+                                                    <option value="">All</option>
+                                                    @foreach($fieldOptions as $option)
+                                                        <option value="{{ $option }}" {{ $selectedFilterValue == $option ? 'selected' : '' }}>
+                                                            {{ $option }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+
+                                            @elseif($field->type === 'boolean')
+                                                <select name="filters[{{ $field->slug }}]" class="form-select">
+                                                    <option value="">All</option>
+                                                    <option value="1" {{ (string) $selectedFilterValue === '1' ? 'selected' : '' }}>Yes</option>
+                                                    <option value="0" {{ (string) $selectedFilterValue === '0' ? 'selected' : '' }}>No</option>
+                                                </select>
+
+                                            @elseif($field->type === 'checkbox')
+                                                <div class="border rounded-2 p-2 bg-white" style="max-height: 120px; overflow-y: auto;">
+                                                    @foreach($fieldOptions as $option)
+                                                        <div class="form-check mb-1">
+                                                            <input class="form-check-input"
+                                                                type="checkbox"
+                                                                name="filters[{{ $field->slug }}][]"
+                                                                value="{{ $option }}"
+                                                                id="filter_{{ $field->slug }}_{{ \Illuminate\Support\Str::slug($option, '_') }}"
+                                                                {{ in_array($option, (array) $selectedFilterValue, true) ? 'checked' : '' }}>
+                                                            <label class="form-check-label" for="filter_{{ $field->slug }}_{{ \Illuminate\Support\Str::slug($option, '_') }}">
+                                                                {{ $option }}
+                                                            </label>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                </div>
+
+                                <div class="d-flex justify-content-end gap-2 flex-wrap mt-3">
+                                    <a href="{{ route('lms.leads') }}" class="btn btn-light border">Reset</a>
+                                    <button type="submit" class="btn btn-primary">Apply Filters</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
 
                 <div class="table-responsive">
 
@@ -142,11 +309,13 @@
                                                 class="btn btn-sm btn-primary me-1">
                                                 <i class="ri-edit-line"></i>
                                             </a>
+                                            @role('Admin|Manager|Cluster')
                                             <input type="hidden" id="deleteUrl" value="{{ route('lms.leads.delete') }}">
 
                                             <button class="btn btn-sm btn-danger deleteRecord" data-id="{{ $lead->id }}">
                                                 <i class="ri-delete-bin-line"></i>
                                             </button>
+                                            @endrole
 
                                         </div>
 
@@ -228,7 +397,8 @@
                                 <select id="assign_supervisor_id" name="supervisor_id" class="form-select" disabled>
                                     <option value="">— Select Manager First —</option>
                                 </select>
-                                <div id="supervisorLoader" class="position-absolute top-50 end-0 translate-middle-y me-4 d-none">
+                                <div id="supervisorLoader"
+                                    class="position-absolute top-50 end-0 translate-middle-y me-4 d-none">
                                     <div class="spinner-border spinner-border-sm text-primary" role="status">
                                         <span class="visually-hidden">Loading...</span>
                                     </div>
@@ -331,7 +501,7 @@
                 supervisorXhr = $.ajax({
                     url: '{{ route("lms.api.supervisors-by-manager") }}',
                     method: 'GET',
-                    data: { manager_id: managerId },
+                    data: {manager_id: managerId},
                     success: function (data) {
                         populateSelect($('#assign_supervisor_id'), data, 'Select Supervisor');
 
@@ -510,4 +680,3 @@
         });
     </script>
 @endsection
-

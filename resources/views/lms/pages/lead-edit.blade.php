@@ -20,12 +20,14 @@
 
                     </a>
 
+                    @role('Admin|Manager|Cluster')
                     <a href="{{ route('lms.leads.add') }}" class="btn btn-primary">
 
                         <i class="ri-add-line"></i>
                         Add Lead
 
                     </a>
+                    @endrole
                 </div>
 
             </div>

@@ -13,8 +13,6 @@
             Dashboard
           </a>
         </li>
-        <li>-</li>
-        <li class="fw-medium">AI</li>
       </ul>
     </div>
 
@@ -25,7 +23,7 @@
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
               <div>
                 <p class="fw-medium text-primary-light mb-1">Total Leads</p>
-                <h6 class="mb-0">20,000</h6>
+                <h6 class="mb-0">{{ number_format($totalLeads) }}</h6>
               </div>
               <div class="w-50-px h-50-px bg-cyan rounded-circle d-flex justify-content-center align-items-center">
                 <iconify-icon icon="fluent:people-20-filled" class="text-white text-2xl mb-0"></iconify-icon>
@@ -45,7 +43,7 @@
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
               <div>
                 <p class="fw-medium text-primary-light mb-1">Total Agents</p>
-                <h6 class="mb-0">150</h6>
+                <h6 class="mb-0">{{ number_format($totalAgents) }}</h6>
               </div>
               <div class="w-50-px h-50-px bg-purple rounded-circle d-flex justify-content-center align-items-center">
                 <iconify-icon icon="bxs:user-badge" class="text-white text-2xl mb-0"></iconify-icon>
@@ -65,7 +63,7 @@
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
               <div>
                 <p class="fw-medium text-primary-light mb-1">Active Leads</p>
-                <h6 class="mb-0">5,000</h6>
+                <h6 class="mb-0">{{ number_format($activeLeads) }}</h6>
               </div>
               <div class="w-50-px h-50-px bg-info rounded-circle d-flex justify-content-center align-items-center">
                 <iconify-icon icon="mdi:account-star" class="text-white text-2xl mb-0"></iconify-icon>
@@ -85,7 +83,7 @@
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
               <div>
                 <p class="fw-medium text-primary-light mb-1">Converted Leads</p>
-                <h6 class="mb-0">1,200</h6>
+                <h6 class="mb-0">{{ number_format($convertedLeads) }}</h6>
               </div>
               <div
                 class="w-50-px h-50-px bg-success-main rounded-circle d-flex justify-content-center align-items-center">
@@ -106,7 +104,7 @@
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
               <div>
                 <p class="fw-medium text-primary-light mb-1">Pending Leads</p>
-                <h6 class="mb-0">3,800</h6>
+                <h6 class="mb-0">{{ number_format($pendingLeads) }}</h6>
               </div>
               <div class="w-50-px h-50-px bg-red rounded-circle d-flex justify-content-center align-items-center">
                 <iconify-icon icon="mdi:account-clock" class="text-white text-2xl mb-0"></iconify-icon>

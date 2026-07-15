@@ -19,34 +19,42 @@
                     <span>Dashboard</span>
                 </a>
             </li>
-            <li class="{{ in_array(Route::currentRouteName(), ['lms.leads', 'lms.lead.add', 'lms.lead.import', 'lms.lead.view','lms.lead.edit']) ? 'active-page' : '' }}">
+            <li
+                class="{{ in_array(Route::currentRouteName(), ['lms.leads', 'lms.lead.add', 'lms.lead.import', 'lms.lead.view', 'lms.lead.edit']) ? 'active-page' : '' }}">
                 <a href="{{ route('lms.leads') }}"
-                    class="{{ in_array(Route::currentRouteName(), ['lms.leads', 'lms.lead.add', 'lms.lead.import', 'lms.lead.view','lms.lead.edit']) ? 'active-page' : '' }}">
+                    class="{{ in_array(Route::currentRouteName(), ['lms.leads', 'lms.lead.add', 'lms.lead.import', 'lms.lead.view', 'lms.lead.edit']) ? 'active-page' : '' }}">
                     <iconify-icon icon="solar:phone-calling-outline" class="menu-icon"></iconify-icon>
                     <span>Leads</span>
                 </a>
             </li>
-            <li class="{{ in_array(Route::currentRouteName(), ['lms.lead-fields.list','lms.lead-fields.add']) ? 'active-page' : '' }}">
+            @role('Admin')
+            <li
+                class="{{ in_array(Route::currentRouteName(), ['lms.lead-fields.list', 'lms.lead-fields.add']) ? 'active-page' : '' }}">
                 <a href="{{ route('lms.lead-fields.list') }}"
-                    class="{{ in_array(Route::currentRouteName(), ['lms.lead-fields.list','lms.lead-fields.add']) ? 'active-page' : '' }}">
+                    class="{{ in_array(Route::currentRouteName(), ['lms.lead-fields.list', 'lms.lead-fields.add']) ? 'active-page' : '' }}">
                     <iconify-icon icon="solar:checklist-minimalistic-outline" class="menu-icon"></iconify-icon>
                     <span>Fields</span>
                 </a>
             </li>
-            <li class="{{ in_array( Route::currentRouteName(), ['lms.feedbacks.list', 'lms.feedbacks.add']) ? 'active-page' : '' }}">
+            <li
+                class="{{ in_array(Route::currentRouteName(), ['lms.feedbacks.list', 'lms.feedbacks.add']) ? 'active-page' : '' }}">
                 <a href="{{ route('lms.feedbacks.list') }}"
                     class="{{ in_array(Route::currentRouteName(), ['lms.feedbacks.list', 'lms.feedbacks.add']) ? 'active-page' : '' }}">
                     <iconify-icon icon="solar:chat-round-dots-outline" class="menu-icon"></iconify-icon>
                     <span>Feedbacks</span>
                 </a>
             </li>
-            <li class="{{ in_array(Route::currentRouteName(), ['lms.users.list','lms.users.add','lms.users.edit']) ? 'active-page' : '' }}">
+            @endrole
+            @role('Admin|Manager|Cluster')
+            <li
+                class="{{ in_array(Route::currentRouteName(), ['lms.users.list', 'lms.users.add', 'lms.users.edit']) ? 'active-page' : '' }}">
                 <a href="{{ route('lms.users.list') }}"
-                    class="{{ in_array(Route::currentRouteName(), ['lms.users.list','lms.users.add','lms.users.edit']) ? 'active-page' : '' }}">
+                    class="{{ in_array(Route::currentRouteName(), ['lms.users.list', 'lms.users.add', 'lms.users.edit']) ? 'active-page' : '' }}">
                     <iconify-icon icon="solar:users-group-rounded-outline" class="menu-icon"></iconify-icon>
                     <span>Users</span>
                 </a>
             </li>
+            @endrole
 
         </ul>
     </div>

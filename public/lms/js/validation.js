@@ -45,6 +45,11 @@ $(document).ready(function () {
     --------------------------------*/
     $("form").each(function () {
         const form = $(this);
+
+        if (form.is("[novalidate]")) {
+            return;
+        }
+
         const rules = {};
         const messages = {};
 

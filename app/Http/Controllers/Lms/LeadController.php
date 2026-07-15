@@ -27,6 +27,7 @@ class LeadController extends Controller
     {
         $user = auth()->user();
         $visibleUserIds = $this->getVisibleUserIds($user);
+        $dynamicFilters = $request->input('filters', []);
 
         $query = Lead::query()
             ->select([
@@ -54,10 +55,85 @@ class LeadController extends Controller
             $query->where('list_id', $request->list_id);
         }
 
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('name')) {
+            $query->where('name', 'like', '%' . trim($request->name) . '%');
+        }
+
+        if ($request->filled('phone_number')) {
+            $query->where('phone_number', 'like', '%' . trim($request->phone_number) . '%');
+        }
+
+        if ($request->filled('email')) {
+            $query->where('email', 'like', '%' . trim($request->email) . '%');
+        }
+
+        $filterableFields = LeadField::query()
+            ->when(
+                $request->filled('list_id'),
+                fn($fieldQuery) => $fieldQuery->where('list_id', $request->list_id)
+            )
+            ->where('is_filterable', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get([
+                'id',
+                'list_id',
+                'name',
+                'slug',
+                'type',
+                'options',
+                'is_filterable',
+            ]);
+
+        foreach ($filterableFields as $field) {
+            $filterValue = $dynamicFilters[$field->slug] ?? null;
+
+            if (is_array($filterValue)) {
+                $filterValue = array_values(array_filter($filterValue, fn($value) => $value !== null && $value !== ''));
+                if (empty($filterValue)) {
+                    continue;
+                }
+            } elseif ($filterValue === null || trim((string) $filterValue) === '') {
+                continue;
+            }
+
+            $jsonPath = '$."' . $field->slug . '"';
+
+            if ($field->type === 'checkbox') {
+                $query->where(function ($fieldQuery) use ($field, $filterValue) {
+                    foreach ((array) $filterValue as $checkboxValue) {
+                        $fieldQuery->orWhereJsonContains('data->' . $field->slug, $checkboxValue);
+                    }
+                });
+                continue;
+            }
+
+            if (in_array($field->type, ['text', 'textarea', 'email', 'phone'], true)) {
+                $query->whereRaw(
+                    "LOWER(JSON_UNQUOTE(JSON_EXTRACT(data, ?))) LIKE ?",
+                    [$jsonPath, '%' . Str::lower(trim((string) $filterValue)) . '%']
+                );
+                continue;
+            }
+
+            $query->whereRaw(
+                "JSON_UNQUOTE(JSON_EXTRACT(data, ?)) = ?",
+                [$jsonPath, (string) $filterValue]
+            );
+        }
+
         $leads = $query
             ->latest('id')
             ->simplePaginate(20)
             ->withQueryString();
+
+        $lists = LeadList::query()
+            ->orderBy('name')
+            ->get(['id', 'name']);
 
         $managers = User::role('Manager')
             ->orderBy('name')
@@ -65,7 +141,7 @@ class LeadController extends Controller
 
         return view(
             'lms.pages.leads-list',
-            compact('leads', 'managers')
+            compact('leads', 'managers', 'lists', 'filterableFields')
         );
     }
 
@@ -772,8 +848,8 @@ class LeadController extends Controller
             ->orderBy('name')
             ->get();
 
-        $feedbacks = Feedback::where('added_by', auth()->id())
-            ->where('parent_id', null)
+        $feedbacks = Feedback::where('parent_id', null)
+            // ->where('added_by', auth()->id())
             ->orderBy('name')
             ->get();
 
