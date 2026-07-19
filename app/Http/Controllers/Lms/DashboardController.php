@@ -17,16 +17,13 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $user = Auth::user();
-        $stats = $this->getDashboardStats($user);
+        $user    = Auth::user();
+        $stats   = $this->getDashboardStats($user);
         $widgets = DashboardWidget::where('is_active', 1)
             ->orderBy('sort_order')
             ->get();
-        foreach ($widgets as $widget) {
-            $widget->chart = app(DashboardWidgetService::class)
-                ->generate($widget);
-        }
 
+        // Chart data is loaded asynchronously by JavaScript — no blocking queries here
         return view('lms.pages.dashboard', compact('stats', 'widgets'));
     }
 

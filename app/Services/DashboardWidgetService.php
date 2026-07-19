@@ -3,21 +3,33 @@
 namespace App\Services;
 
 use App\Models\DashboardWidget;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DashboardWidgetService
 {
+    /** Cache TTL in seconds (10 minutes) */
+    const CACHE_TTL = 600;
+
     public function generate(DashboardWidget $widget)
     {
-        switch ($widget->chart_type) {
-            case 'card':     return $this->card($widget);
-            case 'pie':      return $this->pie($widget);
-            case 'doughnut': return $this->doughnut($widget);
-            case 'bar':      return $this->bar($widget);
-            case 'line':     return $this->line($widget);
-            case 'area':     return $this->area($widget);
-            default:         return [];
-        }
+        // Cache key is busted whenever widget settings change
+        $key = 'widget_chart_' . $widget->id . '_' . md5(
+            $widget->chart_type . $widget->list_id . $widget->field_id .
+            $widget->aggregate . $widget->group_by . $widget->height
+        );
+
+        return Cache::remember($key, self::CACHE_TTL, function () use ($widget) {
+            switch ($widget->chart_type) {
+                case 'card':     return $this->card($widget);
+                case 'pie':      return $this->pie($widget);
+                case 'doughnut': return $this->doughnut($widget);
+                case 'bar':      return $this->bar($widget);
+                case 'line':     return $this->line($widget);
+                case 'area':     return $this->area($widget);
+                default:         return [];
+            }
+        });
     }
 
     protected function card($widget)
@@ -112,18 +124,30 @@ class DashboardWidgetService
 
     protected function groupedRows($widget)
     {
-        $query = DB::table('leads')->where('list_id', $widget->list_id);
-        if ($widget->group_by && in_array($widget->group_by, ['day','week','month','year'])) {
-            return $this->timeSeriesRows($widget);
-        }
-        if ($widget->field_id) {
+        $query     = DB::table('leads')->where('list_id', $widget->list_id);
+        $aggregate = $widget->aggregate ?? 'count';
+
+        // Build the aggregate SQL expression
+        if ($aggregate !== 'count' && $widget->field_id) {
             $field = DB::table('lead_fields')->where('id', $widget->field_id)->first();
             if ($field) {
-                $slug = $field->slug;
-                return $query->select(DB::raw("JSON_UNQUOTE(JSON_EXTRACT(data, '$.$slug')) AS label"), DB::raw('COUNT(*) AS total'))->groupBy('label')->orderByDesc('total')->limit(15)->get();
+                $slug    = $field->slug;
+                $expr    = "CAST(JSON_UNQUOTE(JSON_EXTRACT(data, '$.{$slug}')) AS DECIMAL(15,2))";
+                $aggExpr = strtoupper($aggregate) . "({$expr})";
+            } else {
+                $aggExpr = 'COUNT(*)';
             }
+        } else {
+            $aggExpr = 'COUNT(*)';
         }
-        return $query->select('status AS label', DB::raw('COUNT(*) AS total'))->groupBy('status')->orderByDesc('total')->get();
+
+        // Group by status (categorical dimension), apply aggregate on the value field
+        return $query
+            ->select(DB::raw('COALESCE(status, "unknown") AS label'), DB::raw("{$aggExpr} AS total"))
+            ->groupBy('status')
+            ->orderByDesc('total')
+            ->limit(15)
+            ->get();
     }
 
     protected function timeSeriesRows($widget)

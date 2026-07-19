@@ -165,26 +165,26 @@
 
                 <div class="card-body">
 
-                    @switch($widget->chart_type)
-
-                        @case('card')
-                            <div class="d-flex flex-column align-items-center justify-content-center py-4">
-                                <h2 class="fw-bold mb-1 text-primary-600" style="font-size:2.5rem">
-                                    {{ number_format($widget->chart['value'] ?? 0) }}
-                                </h2>
-                                <p class="text-sm text-secondary-light mb-0">{{ $widget->title }}</p>
+                    @if($widget->chart_type === 'card')
+                        {{-- Card: shows spinner then value via fetch --}}
+                        <div class="d-flex flex-column align-items-center justify-content-center py-4" id="card-body-{{ $widget->id }}">
+                            <div class="spinner-border text-primary mb-2" role="status">
+                                <span class="visually-hidden">Loading…</span>
                             </div>
-                        @break
-
-                        @default
-                            <div
-                                id="chart{{$widget->id}}"
-                                class="apexcharts-tooltip-style-1"
-                                style="min-height: {{ $widget->height ?? 350 }}px">
+                            <p class="text-sm text-secondary-light mb-0">Loading…</p>
+                        </div>
+                    @else
+                        {{-- Chart: skeleton shimmer then ApexCharts --}}
+                        <div id="chart-wrap-{{ $widget->id }}" style="min-height:{{ $widget->height ?? 350 }}px; position:relative;">
+                            <div id="chart-skeleton-{{ $widget->id }}"
+                                 style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;">
+                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="1.5">
+                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                                </svg>
                             </div>
-                        @break
-
-                    @endswitch
+                            <div id="chart{{ $widget->id }}" class="apexcharts-tooltip-style-1"></div>
+                        </div>
+                    @endif
 
                 </div>
 
@@ -201,24 +201,76 @@
 @endsection
 @section('scripts')
 
-{{-- ApexCharts — same library as Wowdash demo --}}
+<style>
+@keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+</style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function(){
+document.addEventListener('DOMContentLoaded', function () {
 
-@foreach($widgets as $widget)
-@if($widget->chart_type !== 'card')
-(function(){
-    var el = document.getElementById('chart{{ $widget->id }}');
-    if (!el) return;
-    {{-- Embed chart options directly from PHP — no extra HTTP request needed --}}
-    var options = {!! json_encode(
-        collect($widget->chart)->except('type')->toArray()
-    , JSON_UNESCAPED_UNICODE) !!};
-    new ApexCharts(el, options).render();
-})();
-@endif
-@endforeach
+    // ── helpers ────────────────────────────────────────────────────────────
+
+    function hideSkeleton(id) {
+        var sk = document.getElementById('chart-skeleton-' + id);
+        if (sk) { sk.style.transition = 'opacity .3s'; sk.style.opacity = '0'; setTimeout(function(){ sk.remove(); }, 320); }
+    }
+
+    function showError(id, msg) {
+        hideSkeleton(id);
+        var wrap = document.getElementById('chart-wrap-' + id);
+        if (wrap) wrap.innerHTML = '<div class="d-flex align-items-center justify-content-center h-100 text-danger py-5"><small><i class="ri-error-warning-line me-1"></i>' + msg + '</small></div>';
+    }
+
+    // ── fetch each widget independently (all run in parallel) ─────────────
+
+    @foreach($widgets as $widget)
+    (function () {
+        var widgetId   = {{ $widget->id }};
+        var chartType  = '{{ $widget->chart_type }}';
+        var dataUrl    = '{{ route("lms.dashboard.widget.data", $widget->id) }}';
+
+        fetch(dataUrl, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function (res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+        })
+        .then(function (data) {
+
+            if (chartType === 'card') {
+                // Card widget — replace spinner with big number
+                var body = document.getElementById('card-body-' + widgetId);
+                if (body) {
+                    var val = (data.value !== undefined) ? Number(data.value).toLocaleString() : '—';
+                    body.innerHTML =
+                        '<h2 class="fw-bold mb-1 text-primary-600" style="font-size:2.5rem">' + val + '</h2>' +
+                        '<p class="text-sm text-secondary-light mb-0">{{ $widget->title }}</p>';
+                }
+            } else {
+                // Chart widget — remove shimmer and render ApexCharts
+                hideSkeleton(widgetId);
+                var el = document.getElementById('chart' + widgetId);
+                if (!el) return;
+
+                // Strip the top-level `type` key — ApexCharts reads chart.type
+                delete data.type;
+
+                new ApexCharts(el, data).render();
+            }
+        })
+        .catch(function (err) {
+            if (chartType === 'card') {
+                var body = document.getElementById('card-body-' + widgetId);
+                if (body) body.innerHTML = '<p class="text-danger text-sm">Failed to load</p>';
+            } else {
+                showError(widgetId, 'Failed to load chart');
+            }
+            console.error('Widget ' + widgetId + ' error:', err);
+        });
+    })();
+    @endforeach
 
 });
 </script>
