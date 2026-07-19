@@ -16,7 +16,7 @@
   <!-- Bootstrap js -->
   <script src="{{ asset('lms/js/lib/bootstrap.bundle.min.js')}}"></script>
   <!-- Apex Chart js -->
-  {{-- <script src="{{ asset('lms/js/lib/apexcharts.min.js')}}"></script> --}}
+  <script src="{{ asset('lms/js/lib/apexcharts.min.js')}}"></script>
   <!-- Data Table js -->
   {{-- <script src="{{ asset('lms/js/lib/dataTables.min.js')}}"></script> --}}
   <!-- Iconify Font js -->

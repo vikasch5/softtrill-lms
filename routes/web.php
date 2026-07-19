@@ -6,7 +6,7 @@ use App\Http\Controllers\Lms\LeadController;
 use App\Http\Controllers\Lms\UserController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [AuthController::class, 'login'])->name('login');
+Route::get('/', [AuthController::class, 'login'])->name('home');
 Route::get('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/login', [AuthController::class, 'doLogin'])->name('task.doLogin');
 Route::get('/register', [AuthController::class, 'register'])->name('task.register');
@@ -42,5 +42,14 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/feedback-save', [LeadController::class, 'feedbackStoreOrUpdate'])->name('lms.feedbacks.store');
     Route::post('/feedback-delete', [LeadController::class, 'feedbackDelete'])->name('lms.feedbacks.delete');
     Route::get('/feedbacks/sub-feedbacks/{feedbackId}', [LeadController::class, 'subFeedbacks'])->name('lms.feedbacks.sub-feedbacks');
+
+    Route::get('/dashboard-widget-list', [DashboardController::class, 'widgetsList'])->name('lms.dashboard.widgets.list');
+    Route::get('/dashboard-widget', [DashboardController::class, 'dashboardWidget'])->name('lms.dashboard.widgets');
+    Route::get('/dashboard-widget-edit/{id}', [DashboardController::class, 'editWidget'])->name('lms.dashboard.widgets.edit');
+    Route::post('/dashboard-widget-store', [DashboardController::class, 'dashboardWidgetStore'])->name('lms.dashboard.widgets.store');
+    Route::get('/dashboard/widgets/fields/{list}', [DashboardController::class, 'getFields'])
+    ->name('lms.dashboard.widgets.fields');
+    Route::get('/dashboard/widget-data/{id}', [DashboardController::class, 'widgetData'])
+    ->name('lms.dashboard.widget.data');
     Route::get('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 });

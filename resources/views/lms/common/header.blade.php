@@ -169,11 +169,11 @@
         box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
     }
 
-    @media (max-width: 1399.98px) {
+    /* @media (max-width: 1399.98px) {
         .header-followups {
             width: min(100%, 640px);
         }
-    }
+    } */
 
     @media (max-width: 1199.98px) {
         .navbar-header {
