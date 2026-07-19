@@ -195,23 +195,23 @@
                                 class="form-control"
                                 name="group_by">
 
-                                <option value="">
+                                <option value="" @selected(old('group_by', $widget->group_by ?? '') == '')>
                                     None
                                 </option>
 
-                                <option value="day">
+                                <option value="day" @selected(old('group_by', $widget->group_by ?? '') == 'day')>
                                     Day
                                 </option>
 
-                                <option value="week">
+                                <option value="week" @selected(old('group_by', $widget->group_by ?? '') == 'week')>
                                     Week
                                 </option>
 
-                                <option value="month">
+                                <option value="month" @selected(old('group_by', $widget->group_by ?? '') == 'month')>
                                     Month
                                 </option>
 
-                                <option value="year">
+                                <option value="year" @selected(old('group_by', $widget->group_by ?? '') == 'year')>
                                     Year
                                 </option>
 
@@ -334,20 +334,38 @@
 
 @section('scripts')
 <script>
+$(document).ready(function() {
 
-$('#list_id').change(function () {
+    let preselectedFieldId = "{{ old('field_id', $widget->field_id ?? '') }}";
 
-    let list = $(this).val();
+    function loadFields(listId, selectedFieldId) {
+        if (!listId) {
+            $('#field_id').html('<option value="">Select Field</option>');
+            return;
+        }
 
-    let url = "{{ route('lms.dashboard.widgets.fields', ':id') }}";
-    url = url.replace(':id', list);
+        let url = "{{ route('lms.dashboard.widgets.fields', ':id') }}";
+        url = url.replace(':id', listId);
 
-    $.get(url, function (response) {
-        $('#field_id').html(response);
+        $.get(url, function (response) {
+            $('#field_id').html(response);
+            if (selectedFieldId) {
+                $('#field_id').val(selectedFieldId);
+            }
+        });
+    }
+
+    $('#list_id').change(function () {
+        loadFields($(this).val(), null);
     });
 
-});
+    // On initial load (e.g., when editing), fetch fields if list_id is selected
+    let initialListId = $('#list_id').val();
+    if (initialListId) {
+        loadFields(initialListId, preselectedFieldId);
+    }
 
+});
 </script>
 
 @endsection

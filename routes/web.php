@@ -47,9 +47,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard-widget', [DashboardController::class, 'dashboardWidget'])->name('lms.dashboard.widgets');
     Route::get('/dashboard-widget-edit/{id}', [DashboardController::class, 'editWidget'])->name('lms.dashboard.widgets.edit');
     Route::post('/dashboard-widget-store', [DashboardController::class, 'dashboardWidgetStore'])->name('lms.dashboard.widgets.store');
-    Route::get('/dashboard/widgets/fields/{list}', [DashboardController::class, 'getFields'])
-    ->name('lms.dashboard.widgets.fields');
-    Route::get('/dashboard/widget-data/{id}', [DashboardController::class, 'widgetData'])
-    ->name('lms.dashboard.widget.data');
+    Route::get('/dashboard/widgets/fields/{list}', [DashboardController::class, 'getFields'])->name('lms.dashboard.widgets.fields');
+    Route::get('/dashboard/widget-data/{id}', [DashboardController::class, 'widgetData'])->name('lms.dashboard.widget.data');
     Route::get('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 });

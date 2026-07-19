@@ -56,14 +56,18 @@
             </li>
             @endrole
             @role('Admin')
-            <li class="dropdown {{ in_array(Route::currentRouteName(), ['lms.dashboard.widgets.list', 'lms.dashboard.widgets.add']) ? 'open' : '' }}">
+            <li
+                class="dropdown {{ in_array(Route::currentRouteName(), ['lms.dashboard.widgets.list', 'lms.dashboard.widgets.add', 'lms.dashboard.widgets.edit']) ? 'open' : '' }}">
                 <a href="javascript:void(0)">
                     <iconify-icon icon="solar:pie-chart-outline" class="menu-icon"></iconify-icon>
                     <span>Setting</span>
                 </a>
                 <ul class="sidebar-submenu">
-                    <li class="{{ in_array(Route::currentRouteName(), ['lms.dashboard.widgets.list', 'lms.dashboard.widgets.add']) ? 'active-page' : '' }}">
-                        <a href="{{ route('lms.dashboard.widgets.list') }}" class="{{ in_array(Route::currentRouteName(), ['lms.dashboard.widgets.list', 'lms.dashboard.widgets.add']) ? 'active-page' : '' }}"><i class="ri-circle-fill circle-icon text-danger-main w-auto"></i>
+                    <li
+                        class="{{ in_array(Route::currentRouteName(), ['lms.dashboard.widgets.list', 'lms.dashboard.widgets.add', 'lms.dashboard.widgets.edit']) ? 'active-page' : '' }}">
+                        <a href="{{ route('lms.dashboard.widgets.list') }}"
+                            class="{{ in_array(Route::currentRouteName(), ['lms.dashboard.widgets.list', 'lms.dashboard.widgets.add']) ? 'active-page' : '' }}"><i
+                                class="ri-circle-fill circle-icon text-danger-main w-auto"></i>
                             Dashboard Widgets</a>
                     </li>
                 </ul>
