@@ -16,7 +16,7 @@
 
     .navbar-header {
         height: auto;
-        min-height: 64px;
+        min-height: 50px;
         background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
         border-bottom: 1px solid rgba(219, 229, 242, 0.95);
         box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
