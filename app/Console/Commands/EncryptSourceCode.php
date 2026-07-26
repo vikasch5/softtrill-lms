@@ -25,7 +25,9 @@ class EncryptSourceCode extends Command
      */
     protected $description = 'Encrypts PHP source code using AES-256-CBC. Only decryptable with YOUR secret key.';
 
-    /** Files to skip during encryption (must not be encrypted to keep app functional) */
+    /**
+     * Files to skip during encryption (must not be encrypted to keep app functional)
+     */
     private array $skipFiles = [
         'EncryptSourceCode.php',
         'CheckLicense.php',
@@ -70,9 +72,9 @@ class EncryptSourceCode extends Command
             $directories = ['app', 'routes'];
         }
 
-        $totalFiles     = 0;
+        $totalFiles = 0;
         $encryptedFiles = 0;
-        $skippedFiles   = 0;
+        $skippedFiles = 0;
 
         foreach ($directories as $dir) {
             $path = base_path($dir);
@@ -83,7 +85,7 @@ class EncryptSourceCode extends Command
             }
 
             $files = File::allFiles($path);
-            $this->info("Scanning directory: {$dir} (" . count($files) . " files found)...");
+            $this->info("Scanning directory: {$dir} (" . count($files) . ' files found)...');
 
             $this->withProgressBar($files, function ($file) use ($derivedKey, &$totalFiles, &$encryptedFiles, &$skippedFiles) {
                 $totalFiles++;
@@ -163,19 +165,19 @@ class EncryptSourceCode extends Command
         // Build the self-decrypting stub using string concatenation.
         // Heredoc is intentionally avoided here because escaped dollar signs
         // inside heredoc strings cause PHP parse errors.
-        $stub  = '<?php /* AES-256-ENC:SOFTTRILL */' . "\n";
+        $stub = '<?php /* AES-256-ENC:SOFTTRILL */' . "\n";
         $stub .= '(function(){' . "\n";
         $stub .= 'static $k=null;' . "\n";
         $stub .= 'if($k===null){' . "\n";
-        $stub .= '$s=getenv(\'APP_SOURCE_KEY\')?:\'\';' . "\n";
-        $stub .= 'if(empty($s)){http_response_code(403);die(\'[Softtrill LMS] APP_SOURCE_KEY not set.\');}' . "\n";
-        $stub .= '$k=hash_pbkdf2(\'sha256\',$s,\'softtrill-lms-salt\',10000,32,true);' . "\n";
+        $stub .= "\$s=getenv('APP_SOURCE_KEY')?:'';" . "\n";
+        $stub .= "if(empty(\$s)){http_response_code(403);die('[Softtrill LMS] APP_SOURCE_KEY not set.');}" . "\n";
+        $stub .= "\$k=hash_pbkdf2('sha256',\$s,'softtrill-lms-salt',10000,32,true);" . "\n";
         $stub .= '}' . "\n";
-        $stub .= '$d=base64_decode(\'' . $payload . '\');' . "\n";
+        $stub .= '$d=base64_decode(\'' . $payload . "');" . "\n";
         $stub .= '$iv=substr($d,0,16);$c=substr($d,16);' . "\n";
         $stub .= '$code=openssl_decrypt($c,\'aes-256-cbc\',$k,OPENSSL_RAW_DATA,$iv);' . "\n";
-        $stub .= 'if($code===false){http_response_code(403);die(\'[Softtrill LMS] Invalid key.\');}' . "\n";
-        $stub .= 'eval(\'?>\'.$code);' . "\n";
+        $stub .= "if(\$code===false){http_response_code(403);die('[Softtrill LMS] Invalid key.');}" . "\n";
+        $stub .= "eval('?>'.\$code);" . "\n";
         $stub .= '})();' . "\n";
 
         file_put_contents($filePath, $stub);

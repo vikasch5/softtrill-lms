@@ -28,19 +28,15 @@
                     @endrole
 
                     @role('Admin|Manager|Cluster')
-                    <a href="{{ route('lms.leads') }}" class="btn btn-primary">
-
-                        <i class="ri-arrow-left-line"></i>
-                        All Leads
-
-                    </a>
-
-
                     <a href="{{ route('lms.lead.import') }}" class="btn btn-primary">
 
                         <i class="ri-upload-cloud-line"></i>
                         Import Leads
 
+                    </a>
+                     <a href="{{ route('lms.leads.add') }}" class="btn btn-primary">
+                        <i class="ri-upload-cloud-line"></i>
+                        Add Leads
                     </a>
                     @endrole
                 </div>
@@ -86,10 +82,6 @@
 
                         <div class="collapse {{ $hasActiveFilters ? 'show' : '' }}" id="leadFiltersCollapse">
                             <div class="border-top p-3">
-                                <div class="d-flex justify-content-end gap-2 flex-wrap mb-3">
-                                    <a href="{{ route('lms.leads') }}" class="btn btn-light border">Reset</a>
-                                    <button type="submit" class="btn btn-primary">Apply Filters</button>
-                                </div>
 
                                 <div class="row g-3">
                                     <div class="col-md-3">
@@ -220,7 +212,7 @@
                                 <th><input type="checkbox" class="form-check-input" id="select-all"></th>
                                 <th>#</th>
                                 <th>Lead Info</th>
-                                <th>List</th>
+                                {{-- <th>List</th> --}}
                                 <th>Status</th>
                                 <th>Assigned To</th>
                                 <th>Call</th>
@@ -266,11 +258,11 @@
 
                                     </td>
 
-                                    <td>
+                                    {{-- <td>
 
                                         {{ $lead->list->name ?? '-' }}
 
-                                    </td>
+                                    </td> --}}
 
                                     <td>
 

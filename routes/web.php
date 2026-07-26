@@ -4,6 +4,8 @@ use App\Http\Controllers\Lms\AuthController;
 use App\Http\Controllers\Lms\DashboardController;
 use App\Http\Controllers\Lms\LeadController;
 use App\Http\Controllers\Lms\UserController;
+use App\Services\LicenseService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [AuthController::class, 'login'])->name('home');
@@ -51,3 +53,29 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard/widget-data/{id}', [DashboardController::class, 'widgetData'])->name('lms.dashboard.widget.data');
     Route::get('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 });
+
+/*
+|--------------------------------------------------------------------------
+| License Webhook (called by softtrill.com to instantly clear cache)
+|--------------------------------------------------------------------------
+| When you change a license status in your softtrill.com admin panel,
+| make a POST request to this URL with { "secret": "<LICENSE_SECRET_SALT>" }.
+| The LMS will clear its cache immediately so the new status takes effect
+| on the very next page load — no waiting for the 5-minute cache to expire.
+|
+| Example from softtrill.com (Laravel):
+|   Http::post('http://client-domain.com/license-webhook', [
+|       'secret' => env('LICENSE_SECRET_SALT'),
+|   ]);
+*/
+Route::post('/license-webhook', function (Request $request) {
+    $expectedSecret = config('license.secret_salt');
+
+    if (empty($expectedSecret) || $request->input('secret') !== $expectedSecret) {
+        abort(403, 'Invalid webhook secret.');
+    }
+
+    LicenseService::clearCache();
+
+    return response()->json(['ok' => true, 'message' => 'License cache cleared.']);
+})->withoutMiddleware([\App\Http\Middleware\CheckLicense::class]);
