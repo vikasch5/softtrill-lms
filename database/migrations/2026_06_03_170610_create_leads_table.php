@@ -23,6 +23,9 @@ return new class extends Migration {
 
             $table->string('email_index')->nullable();
             $table->string('phone_index')->nullable();
+             $table->string('name')->nullable();
+            $table->string('email')->nullable();
+            $table->string('phone_number')->nullable();
 
             $table->string('duplicate_hash', 64)->nullable();
 

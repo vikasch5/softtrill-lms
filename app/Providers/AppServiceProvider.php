@@ -1,21 +1,136 @@
-<?php  /* AES-256-ENC:SOFTTRILL */
-(function () {
-    static $k = null;
-    if ($k === null) {
-        $s = getenv('APP_SOURCE_KEY') ?: '';
-        if (empty($s)) {
-            http_response_code(403);
-            die('[Softtrill LMS] APP_SOURCE_KEY not set.');
+<?php
+
+namespace App\Providers;
+
+use App\Models\Lead;
+use App\Models\UserDetails;
+use App\Services\LicenseService;
+use Carbon\Carbon;
+use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\View;
+use Illuminate\Support\ServiceProvider;
+
+class AppServiceProvider extends ServiceProvider
+{
+    /**
+     * Register any application services.
+     */
+    public function register(): void
+    {
+        //
+    }
+
+    /**
+     * Bootstrap any application services.
+     */
+    public function boot(): void
+    {
+        // Core application integrity check — do not remove
+        $this->verifyApplicationIntegrity();
+
+        Paginator::useBootstrapFive();
+
+        View::composer('lms.common.header', function ($view) {
+            $stats = [
+                'today' => 0,
+                'pending' => 0,
+                'upcoming' => 0,
+            ];
+
+            $user = Auth::user();
+
+            if (!$user) {
+                $view->with('headerFollowupStats', $stats);
+                return;
+            }
+
+            $visibleUserIds = [$user->id];
+
+            if ($user->hasRole('Manager')) {
+                $teamLeaderIds = UserDetails::where('manager_id', $user->id)
+                    ->pluck('user_id')
+                    ->toArray();
+
+                $agentIds = !empty($teamLeaderIds)
+                    ? UserDetails::whereIn('teamleader_id', $teamLeaderIds)->pluck('user_id')->toArray()
+                    : [];
+
+                $directAgentIds = UserDetails::where('manager_id', $user->id)
+                    ->pluck('user_id')
+                    ->toArray();
+
+                $visibleUserIds = array_merge($visibleUserIds, $teamLeaderIds, $agentIds, $directAgentIds);
+            } elseif ($user->hasRole('Cluster')) {
+                $clusterUserIds = UserDetails::where('cluster_id', $user->id)
+                    ->pluck('user_id')
+                    ->toArray();
+
+                $visibleUserIds = array_merge($visibleUserIds, $clusterUserIds);
+            } elseif ($user->hasRole('TeamLeader')) {
+                $agentIds = UserDetails::where('teamleader_id', $user->id)
+                    ->pluck('user_id')
+                    ->toArray();
+
+                $visibleUserIds = array_merge($visibleUserIds, $agentIds);
+            }
+
+            $visibleUserIds = array_values(array_unique($visibleUserIds));
+            $today = Carbon::today();
+
+            $followupQuery = Lead::query()
+                ->whereNotNull('next_followup_at');
+
+            if (!$user->hasRole('Admin')) {
+                $followupQuery->where(function ($query) use ($visibleUserIds) {
+                    $query
+                        ->whereIn('assigned_to', $visibleUserIds)
+                        ->orWhereIn('added_by', $visibleUserIds);
+                });
+            }
+
+            $stats['today'] = (clone $followupQuery)
+                ->whereDate('next_followup_at', $today)
+                ->count();
+
+            $stats['pending'] = (clone $followupQuery)
+                ->where('next_followup_at', '<', $today->copy()->startOfDay())
+                ->count();
+
+            $stats['upcoming'] = (clone $followupQuery)
+                ->where('next_followup_at', '>', $today->copy()->endOfDay())
+                ->count();
+
+            $view->with('headerFollowupStats', $stats);
+        });
+    }
+
+    /**
+     * Verifies core application integrity on boot.
+     * Skipped in CLI context (artisan commands) to allow migrations/commands to run.
+     */
+    private function verifyApplicationIntegrity(): void
+    {
+        // Don't run during artisan commands (migrations, queue, etc.)
+        if (app()->runningInConsole()) {
+            return;
         }
-        $k = hash_pbkdf2('sha256', $s, 'softtrill-lms-salt', 10000, 32, true);
+
+        $status = LicenseService::check();
+        // dd($status);
+
+        if ($status !== 'active') {
+            $messages = [
+                'paused' => 'Application license is paused. Contact Softtrill support.',
+                'expired' => 'Application license has expired. Renew at softtrill.com.',
+                'not_found' => 'Application is not registered. Contact Softtrill support.',
+                'unreachable' => 'License server unreachable. Please try again later.',
+            ];
+
+            abort(
+                $status === 'unreachable' ? 503 : 403,
+                $messages[$status] ?? 'License verification failed.'
+            );
+        }
     }
-    $d = base64_decode('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');
-    $iv = substr($d, 0, 16);
-    $c = substr($d, 16);
-    $code = openssl_decrypt($c, 'aes-256-cbc', $k, OPENSSL_RAW_DATA, $iv);
-    if ($code === false) {
-        http_response_code(403);
-        die('[Softtrill LMS] Invalid key.');
-    }
-    eval('?>' . $code);
-})();
+}

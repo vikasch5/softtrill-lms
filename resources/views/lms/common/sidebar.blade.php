@@ -4,10 +4,10 @@
     </button>
     <div>
         <a href="index.html" class="sidebar-logo">
-            {{-- <img src="assets/images/logo.png" alt="site logo" class="light-logo">
-            <img src="assets/images/logo-light.png" alt="site logo" class="dark-logo">
-            <img src="assets/images/logo-icon.png" alt="site logo" class="logo-icon"> --}}
-            <span class="logo-text fs-6">LMS</span>
+            <img src="{{ asset('lms/images/logo.png') }}" alt="site logo" class="light-logo d-flex justify-content-center">
+            <img src="{{ asset('lms/images/logo.png') }}" alt="site logo" class="dark-logo d-flex justify-content-center">
+            <img src="{{ asset('lms/images/logo.png') }}" alt="site logo" class="logo-icon d-flex justify-content-center">
+            {{-- <span class="logo-text fs-6">LMS</span> --}}
         </a>
     </div>
     <div class="sidebar-menu-area">
