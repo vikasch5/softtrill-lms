@@ -5,8 +5,6 @@
     <div>
         <a href="index.html" class="sidebar-logo">
             <img src="{{ asset('lms/images/logo.png') }}" alt="site logo" class="light-logo d-flex justify-content-center">
-            <img src="{{ asset('lms/images/logo.png') }}" alt="site logo" class="dark-logo d-flex justify-content-center">
-            <img src="{{ asset('lms/images/logo.png') }}" alt="site logo" class="logo-icon d-flex justify-content-center">
             {{-- <span class="logo-text fs-6">LMS</span> --}}
         </a>
     </div>
