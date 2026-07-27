@@ -279,15 +279,42 @@ class LeadController extends Controller
     public function fieldStoreOrUpdate(Request $request)
     {
         $request->validate([
-            // 'list_id' => 'required|exists:lead_lists,id',
-            'fields' => 'required|array|min:1',
+            'list_id'   => 'nullable|exists:lead_lists,id',
+            'list_name' => 'nullable|string|max:255',
+            'fields'    => 'required|array|min:1',
         ]);
 
         try {
             DB::beginTransaction();
 
             $tenantId = auth()->id();
-            $listId = '1';
+            $userId   = auth()->id();
+
+            /*
+             * |--------------------------------------------------------------------------
+             * | Resolve or Auto-Create the Lead List
+             * |--------------------------------------------------------------------------
+             */
+
+            if ($request->filled('list_id')) {
+                $list = LeadList::findOrFail($request->list_id);
+            } else {
+                $listName = $request->filled('list_name')
+                    ? trim($request->list_name)
+                    : 'Field List ' . now()->format('YmdHis');
+
+                $list = LeadList::create([
+                    'added_by'    => $userId,
+                    'tenant_id'   => $tenantId,
+                    'name'        => $listName,
+                    'description' => 'Auto-generated list',
+                    'is_active'   => 1,
+                    'created_by'  => $userId,
+                    'updated_by'  => $userId,
+                ]);
+            }
+
+            $listId = $list->id;
 
             foreach ($request->fields as $field) {
                 if (empty(trim($field['name'] ?? ''))) {
@@ -375,8 +402,10 @@ class LeadController extends Controller
             DB::commit();
 
             return response()->json([
-                'success' => true,
-                'message' => 'Fields saved successfully'
+                'success'   => true,
+                'message'   => 'Fields saved successfully',
+                'list_id'   => $list->id,
+                'list_name' => $list->name,
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
