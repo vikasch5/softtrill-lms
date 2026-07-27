@@ -310,7 +310,6 @@ class LeadController extends Controller
                     'description' => 'Auto-generated list',
                     'is_active'   => 1,
                     'created_by'  => $userId,
-                    'updated_by'  => $userId,
                 ]);
             }
 
