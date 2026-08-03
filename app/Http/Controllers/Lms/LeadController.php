@@ -1235,7 +1235,7 @@ class LeadController extends Controller
         $agentId  = auth()->id();
 
         // Resolve the local IP of the server
-        $serverIp = gethostbyname(gethostname());
+        echo $serverIp = gethostbyname(gethostname());die;
 
         $apiUrl = "http://{$serverIp}/Client-Dir/api.php";
 
