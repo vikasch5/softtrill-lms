@@ -1232,45 +1232,47 @@ class LeadController extends Controller
             'phone' => 'required|string|max:20',
         ]);
 
-        $phone = $request->input('phone');
+        $phone   = $request->input('phone');
         $agentId = auth()->id();
 
-        // Resolve the local IP of the server
-        // $serverIp = gethostbyname(gethostname());
+        // Hard-coded server IP (or swap back to gethostbyname(gethostname()) for auto-resolve)
         $serverIp = '182.77.61.13:8083';
 
-        $apiUrl = "http://{$serverIp}/Client-Dir/api.php";
-
         $params = http_build_query([
-            'source' => 'test',
-            'user' => '7777',
-            'pass' => '7777',
+            'source'     => 'test',
+            'user'       => '7777',
+            'pass'       => '7777',
             'agent_user' => $agentId,
-            'function' => 'external_dial',
-            'value' => $phone,
+            'function'   => 'external_dial',
+            'value'      => $phone,
             'phone_code' => '0',
-            'search' => 'YES',
-            'preview' => 'NO',
-            'focus' => 'YES',
+            'search'     => 'YES',
+            'preview'    => 'NO',
+            'focus'      => 'YES',
         ]);
 
-        $fullUrl = $apiUrl . '?' . $params;
-        // dd($fullUrl);
+        $fullUrl = "http://{$serverIp}/Client-Dir/api.php?" . $params;
 
-        $ctx = stream_context_create([
-            'http' => [
-                'timeout' => 10,
-            ],
+        // Use cURL — works regardless of allow_url_fopen php.ini setting
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL            => $fullUrl,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTPGET        => true,
         ]);
 
-        $responseBody = file_get_contents($fullUrl, false, $ctx);
+        $responseBody = curl_exec($ch);
+        $curlError    = curl_error($ch);
+        $httpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
 
-dd(error_get_last(), $responseBody);
-
-        if ($responseBody === false) {
+        if ($responseBody === false || $curlError) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unable to reach dialer server. Please check the server connection.',
+                'message' => 'Unable to reach dialer server: ' . ($curlError ?: 'Unknown cURL error.'),
             ], 502);
         }
 
@@ -1286,12 +1288,12 @@ dd(error_get_last(), $responseBody);
         // Map common dialer error codes to human-readable messages
         $errorMessages = [
             'ERROR: no active session for this agent' => 'Agent has no active session. Please log in to the dialer first.',
-            'ERROR: agent not logged in' => 'Agent is not logged in to the dialer.',
-            'ERROR: invalid user or pass' => 'Invalid dialer credentials.',
-            'ERROR: not logged in' => 'Dialer authentication failed.',
-            'ERROR: agent already in active call' => 'Agent is already on an active call.',
-            'ERROR: phone number invalid' => 'The phone number is invalid.',
-            'ERROR: no campaign for agent' => 'No campaign is assigned to this agent.',
+            'ERROR: agent not logged in'              => 'Agent is not logged in to the dialer.',
+            'ERROR: invalid user or pass'             => 'Invalid dialer credentials.',
+            'ERROR: not logged in'                    => 'Dialer authentication failed.',
+            'ERROR: agent already in active call'     => 'Agent is already on an active call.',
+            'ERROR: phone number invalid'             => 'The phone number is invalid.',
+            'ERROR: no campaign for agent'            => 'No campaign is assigned to this agent.',
         ];
 
         $humanMessage = $errorMessages[$responseBody]
@@ -1300,7 +1302,7 @@ dd(error_get_last(), $responseBody);
         return response()->json([
             'success' => false,
             'message' => $humanMessage,
-            'raw' => $responseBody,
+            'raw'     => $responseBody,
         ], 422);
     }
 }
