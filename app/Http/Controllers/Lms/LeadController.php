@@ -1232,23 +1232,23 @@ class LeadController extends Controller
             'phone' => 'required|string|max:20',
         ]);
 
-        $phone   = $request->input('phone');
+        $phone = $request->input('phone');
         $agentId = auth()->id();
 
         // Hard-coded server IP (or swap back to gethostbyname(gethostname()) for auto-resolve)
-        $serverIp = '182.77.61.13:8083';
+        $serverIp = '182.77.61.13:8082';
 
         $params = http_build_query([
-            'source'     => 'test',
-            'user'       => '7777',
-            'pass'       => '7777',
+            'source' => 'test',
+            'user' => '7777',
+            'pass' => '7777',
             'agent_user' => $agentId,
-            'function'   => 'external_dial',
-            'value'      => $phone,
+            'function' => 'external_dial',
+            'value' => $phone,
             'phone_code' => '0',
-            'search'     => 'YES',
-            'preview'    => 'NO',
-            'focus'      => 'YES',
+            'search' => 'YES',
+            'preview' => 'NO',
+            'focus' => 'YES',
         ]);
 
         $fullUrl = "http://{$serverIp}/Client-Dir/api.php?" . $params;
@@ -1256,17 +1256,17 @@ class LeadController extends Controller
         // Use cURL — works regardless of allow_url_fopen php.ini setting
         $ch = curl_init();
         curl_setopt_array($ch, [
-            CURLOPT_URL            => $fullUrl,
+            CURLOPT_URL => $fullUrl,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_TIMEOUT => 10,
             CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTPGET        => true,
+            CURLOPT_HTTPGET => true,
         ]);
 
         $responseBody = curl_exec($ch);
-        $curlError    = curl_error($ch);
-        $httpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         if ($responseBody === false || $curlError) {
@@ -1288,12 +1288,12 @@ class LeadController extends Controller
         // Map common dialer error codes to human-readable messages
         $errorMessages = [
             'ERROR: no active session for this agent' => 'Agent has no active session. Please log in to the dialer first.',
-            'ERROR: agent not logged in'              => 'Agent is not logged in to the dialer.',
-            'ERROR: invalid user or pass'             => 'Invalid dialer credentials.',
-            'ERROR: not logged in'                    => 'Dialer authentication failed.',
-            'ERROR: agent already in active call'     => 'Agent is already on an active call.',
-            'ERROR: phone number invalid'             => 'The phone number is invalid.',
-            'ERROR: no campaign for agent'            => 'No campaign is assigned to this agent.',
+            'ERROR: agent not logged in' => 'Agent is not logged in to the dialer.',
+            'ERROR: invalid user or pass' => 'Invalid dialer credentials.',
+            'ERROR: not logged in' => 'Dialer authentication failed.',
+            'ERROR: agent already in active call' => 'Agent is already on an active call.',
+            'ERROR: phone number invalid' => 'The phone number is invalid.',
+            'ERROR: no campaign for agent' => 'No campaign is assigned to this agent.',
         ];
 
         $humanMessage = $errorMessages[$responseBody]
@@ -1302,7 +1302,7 @@ class LeadController extends Controller
         return response()->json([
             'success' => false,
             'message' => $humanMessage,
-            'raw'     => $responseBody,
+            'raw' => $responseBody,
         ], 422);
     }
 }
