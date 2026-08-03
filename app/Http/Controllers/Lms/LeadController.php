@@ -1264,6 +1264,7 @@ class LeadController extends Controller
         ]);
 
         $responseBody = @file_get_contents($fullUrl, false, $ctx);
+        dd($responseBody);
 
         if ($responseBody === false) {
             return response()->json([
