@@ -1235,7 +1235,8 @@ class LeadController extends Controller
         $agentId  = auth()->id();
 
         // Resolve the local IP of the server
-        echo $serverIp = gethostbyname(gethostname());die;
+        // $serverIp = gethostbyname(gethostname());
+        $serverIp = '182.77.61.13';
 
         $apiUrl = "http://{$serverIp}/Client-Dir/api.php";
 
@@ -1243,7 +1244,7 @@ class LeadController extends Controller
             'source'      => 'test',
             'user'        => '7777',
             'pass'        => '7777',
-            'agent_user'  => $agentId,
+            'agent_user'  => 05,
             'function'    => 'external_dial',
             'value'       => $phone,
             'phone_code'  => '0',
