@@ -977,11 +977,11 @@ class LeadController extends Controller
 
             $leadQuery = Lead::whereIn('id', $request->lead_ids);
 
-            if ($tenantId) {
-                $leadQuery->where('tenant_id', $tenantId);
-            } else {
+            // if ($tenantId) {
+            //     $leadQuery->where('tenant_id', $tenantId);
+            // } else {
                 $leadQuery->where('added_by', auth()->id());
-            }
+            // }
 
             $leadIds = $leadQuery->pluck('id');
 

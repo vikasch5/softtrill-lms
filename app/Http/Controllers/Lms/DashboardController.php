@@ -122,7 +122,8 @@ class DashboardController extends Controller
 
     public function dashboardWidget()
     {
-        $lists = LeadList::get();
+        // $lists = LeadList::get();
+        $lists = [];
         return view('lms.pages.dashboard-widget', compact('lists'));
     }
 
