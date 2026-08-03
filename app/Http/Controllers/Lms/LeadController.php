@@ -975,15 +975,15 @@ class LeadController extends Controller
             $user = auth()->user();
             $tenantId = $user->tenant_id ?? null;
 
-            dd($request->lead_ids);
+            // dd($request->lead_ids);
             $leadQuery = Lead::whereIn('id', $request->lead_ids);
 
             // if ($tenantId) {
             //     $leadQuery->where('tenant_id', $tenantId);
             // } else {
-                $leadQuery->where('added_by', auth()->id());
+                // $leadQuery->where('added_by', auth()->id());
             // }
-            dd($leadQuery->get());
+            // dd($leadQuery->get());
 
             $leadIds = $leadQuery->pluck('id');
 
