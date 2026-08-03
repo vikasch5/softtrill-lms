@@ -982,6 +982,7 @@ class LeadController extends Controller
             // } else {
                 $leadQuery->where('added_by', auth()->id());
             // }
+            dd($leadQuery->get());
 
             $leadIds = $leadQuery->pluck('id');
 
