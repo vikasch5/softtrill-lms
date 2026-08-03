@@ -54,6 +54,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
     Route::post('/dialer-call', [LeadController::class, 'dialerCall'])->name('lms.dialer.call');
     Route::post('/dialer-hangup', [LeadController::class, 'dialerHangup'])->name('lms.dialer.hangup');
+    Route::post('/dialer-status', [LeadController::class, 'dialerStatus'])->name('lms.dialer.status');
 });
 
 /*

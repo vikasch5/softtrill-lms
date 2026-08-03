@@ -1249,7 +1249,7 @@ class LeadController extends Controller
             'phone_code' => '0',
             'search' => 'YES',
             'preview' => 'NO',
-            'focus' => 'YES',
+            'focus' => 'NO',
         ]);
 
         $fullUrl = "http://{$serverIp}/Client-Dir/api.php?" . $params;
@@ -1314,32 +1314,32 @@ class LeadController extends Controller
      */
     public function dialerHangup(Request $request)
     {
-        $agentId  = auth()->id();
+        $agentId = auth()->id();
         $serverIp = gethostbyname(gethostname());
 
         $params = http_build_query([
-            'source'     => 'test',
-            'user'       => '7777',
-            'pass'       => '7777',
+            'source' => 'test',
+            'user' => '7777',
+            'pass' => '7777',
             'agent_user' => $agentId,
-            'function'   => 'external_hangup',
-            'value'      => '1',
+            'function' => 'external_hangup',
+            'value' => '1',
         ]);
 
         $fullUrl = "http://{$serverIp}/agc/api.php?" . $params;
 
         $ch = curl_init();
         curl_setopt_array($ch, [
-            CURLOPT_URL            => $fullUrl,
+            CURLOPT_URL => $fullUrl,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_TIMEOUT => 10,
             CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTPGET        => true,
+            CURLOPT_HTTPGET => true,
         ]);
 
         $responseBody = curl_exec($ch);
-        $curlError    = curl_error($ch);
+        $curlError = curl_error($ch);
         curl_close($ch);
 
         if ($responseBody === false || $curlError) {
@@ -1361,7 +1361,63 @@ class LeadController extends Controller
         return response()->json([
             'success' => false,
             'message' => 'Hangup failed: ' . $responseBody,
-            'raw'     => $responseBody,
+            'raw' => $responseBody,
+        ], 422);
+    }
+
+    /**
+     * Proxy the dialer external_status API call (fired after hangup).
+     */
+    public function dialerStatus(Request $request)
+    {
+        $agentId = auth()->id();
+        $serverIp = gethostbyname(gethostname());
+
+        $params = http_build_query([
+            'source' => 'test',
+            'user' => '7777',
+            'pass' => '7777',
+            'agent_user' => $agentId,
+            'function' => 'external_status',
+            'value' => 'CALLED',
+        ]);
+
+        $fullUrl = "http://{$serverIp}/agc/api.php?" . $params;
+
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $fullUrl,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 10,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTPGET => true,
+        ]);
+
+        $responseBody = curl_exec($ch);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($responseBody === false || $curlError) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to reach dialer server: ' . ($curlError ?: 'Unknown cURL error.'),
+            ], 502);
+        }
+
+        $responseBody = trim($responseBody);
+
+        if (str_starts_with($responseBody, 'SUCCESS')) {
+            return response()->json([
+                'success' => true,
+                'message' => $responseBody,
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Status update failed: ' . $responseBody,
+            'raw' => $responseBody,
         ], 422);
     }
 }

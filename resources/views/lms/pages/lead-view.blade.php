@@ -1257,6 +1257,27 @@ $(document).ready(function() {
                 if (response.success) {
                     notify_it('success', 'Call disconnected successfully.');
                     $btn.closest('#dialer-disconnect-wrap').fadeOut(400);
+
+                    // After 2 seconds, fire external_status then close window
+                    setTimeout(function () {
+                        $.ajax({
+                            url    : '{{ route('lms.dialer.status') }}',
+                            method : 'POST',
+                            data   : { _token: '{{ csrf_token() }}' },
+                            success: function (statusResponse) {
+                                if (!statusResponse.success) {
+                                    console.warn('Dialer status update failed:', statusResponse.message);
+                                }
+                            },
+                            error: function (xhr) {
+                                console.error('Dialer status error:', xhr.responseJSON?.message);
+                            },
+                            complete: function () {
+                                window.close();
+                            }
+                        });
+                    }, 2000);
+
                 } else {
                     notify_it('error', response.message || 'Hangup failed.');
                     $btn.prop('disabled', false)
