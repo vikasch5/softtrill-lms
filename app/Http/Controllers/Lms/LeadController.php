@@ -1252,6 +1252,7 @@ class LeadController extends Controller
         ]);
 
         $fullUrl = "http://{$serverIp}/Client-Dir/api.php?" . $params;
+        dd($fullUrl);
 
         // Use cURL — works regardless of allow_url_fopen php.ini setting
         $ch = curl_init();
