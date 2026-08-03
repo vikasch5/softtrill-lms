@@ -1244,7 +1244,7 @@ class LeadController extends Controller
             'source'      => 'test',
             'user'        => '7777',
             'pass'        => '7777',
-            'agent_user'  => 05,
+            'agent_user'  => $agentId,
             'function'    => 'external_dial',
             'value'       => $phone,
             'phone_code'  => '0',
