@@ -1254,6 +1254,7 @@ class LeadController extends Controller
         ]);
 
         $fullUrl = $apiUrl . '?' . $params;
+        dd($fullUrl);
 
         $ctx = stream_context_create([
             'http' => [
