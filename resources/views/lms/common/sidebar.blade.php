@@ -3,7 +3,7 @@
         <iconify-icon icon="radix-icons:cross-2"></iconify-icon>
     </button>
     <div>
-        <a href="index.html" class="sidebar-logo d-flex justify-content-center">
+        <a href="{{ route('lms.dashboard') }}" class="sidebar-logo d-flex justify-content-center">
             <img src="{{ asset('lms/images/logo.png') }}" alt="site logo" class="light-logo d-flex justify-content-center">
             {{-- <span class="logo-text fs-6">LMS</span> --}}
         </a>

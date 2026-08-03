@@ -113,7 +113,7 @@
             <div class="auth-box">
 
                 <div>
-                    <a href="index.html" class="mb-40 max-w-290-px">
+                    <a href="{{ route('lms.dashboard') }}" class="mb-40 max-w-290-px">
                         <!-- <img src="{{ asset('lms/images/logo.png') }}" alt="Image"> -->
                         <!-- <h4>JobKart Task</h4> -->
                     </a>
