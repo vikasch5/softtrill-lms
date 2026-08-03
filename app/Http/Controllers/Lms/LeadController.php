@@ -46,7 +46,8 @@ class LeadController extends Controller
         // Admin sees everything, others see leads within their hierarchy
         if (!$user->hasRole('Admin')) {
             $query->where(function ($q) use ($visibleUserIds) {
-                $q->whereIn('assigned_to', $visibleUserIds)
+                $q
+                    ->whereIn('assigned_to', $visibleUserIds)
                     ->orWhereIn('added_by', $visibleUserIds);
             });
         }
@@ -114,14 +115,14 @@ class LeadController extends Controller
 
             if (in_array($field->type, ['text', 'textarea', 'email', 'phone'], true)) {
                 $query->whereRaw(
-                    "LOWER(JSON_UNQUOTE(JSON_EXTRACT(data, ?))) LIKE ?",
+                    'LOWER(JSON_UNQUOTE(JSON_EXTRACT(data, ?))) LIKE ?',
                     [$jsonPath, '%' . Str::lower(trim((string) $filterValue)) . '%']
                 );
                 continue;
             }
 
             $query->whereRaw(
-                "JSON_UNQUOTE(JSON_EXTRACT(data, ?)) = ?",
+                'JSON_UNQUOTE(JSON_EXTRACT(data, ?)) = ?',
                 [$jsonPath, (string) $filterValue]
             );
         }
@@ -279,16 +280,16 @@ class LeadController extends Controller
     public function fieldStoreOrUpdate(Request $request)
     {
         $request->validate([
-            'list_id'   => 'nullable|exists:lead_lists,id',
+            'list_id' => 'nullable|exists:lead_lists,id',
             'list_name' => 'nullable|string|max:255',
-            'fields'    => 'required|array|min:1',
+            'fields' => 'required|array|min:1',
         ]);
 
         try {
             DB::beginTransaction();
 
             $tenantId = auth()->id();
-            $userId   = auth()->id();
+            $userId = auth()->id();
 
             /*
              * |--------------------------------------------------------------------------
@@ -304,12 +305,12 @@ class LeadController extends Controller
                     : 'Field List ' . now()->format('YmdHis');
 
                 $list = LeadList::create([
-                    'added_by'    => $userId,
-                    'tenant_id'   => $tenantId,
-                    'name'        => $listName,
+                    'added_by' => $userId,
+                    'tenant_id' => $tenantId,
+                    'name' => $listName,
                     'description' => 'Auto-generated list',
-                    'is_active'   => 1,
-                    'created_by'  => $userId,
+                    'is_active' => 1,
+                    'created_by' => $userId,
                 ]);
             }
 
@@ -401,9 +402,9 @@ class LeadController extends Controller
             DB::commit();
 
             return response()->json([
-                'success'   => true,
-                'message'   => 'Fields saved successfully',
-                'list_id'   => $list->id,
+                'success' => true,
+                'message' => 'Fields saved successfully',
+                'list_id' => $list->id,
                 'list_name' => $list->name,
             ]);
         } catch (\Throwable $e) {
@@ -981,7 +982,7 @@ class LeadController extends Controller
             // if ($tenantId) {
             //     $leadQuery->where('tenant_id', $tenantId);
             // } else {
-                // $leadQuery->where('added_by', auth()->id());
+            // $leadQuery->where('added_by', auth()->id());
             // }
             // dd($leadQuery->get());
 
@@ -1231,26 +1232,26 @@ class LeadController extends Controller
             'phone' => 'required|string|max:20',
         ]);
 
-        $phone    = $request->input('phone');
-        $agentId  = auth()->id();
+        $phone = $request->input('phone');
+        $agentId = auth()->id();
 
         // Resolve the local IP of the server
         // $serverIp = gethostbyname(gethostname());
-        $serverIp = '182.77.61.13';
+        $serverIp = '182.77.61.13:8083';
 
         $apiUrl = "http://{$serverIp}/Client-Dir/api.php";
 
         $params = http_build_query([
-            'source'      => 'test',
-            'user'        => '7777',
-            'pass'        => '7777',
-            'agent_user'  => $agentId,
-            'function'    => 'external_dial',
-            'value'       => $phone,
-            'phone_code'  => '0',
-            'search'      => 'YES',
-            'preview'     => 'NO',
-            'focus'       => 'YES',
+            'source' => 'test',
+            'user' => '7777',
+            'pass' => '7777',
+            'agent_user' => $agentId,
+            'function' => 'external_dial',
+            'value' => $phone,
+            'phone_code' => '0',
+            'search' => 'YES',
+            'preview' => 'NO',
+            'focus' => 'YES',
         ]);
 
         $fullUrl = $apiUrl . '?' . $params;
@@ -1282,13 +1283,13 @@ class LeadController extends Controller
 
         // Map common dialer error codes to human-readable messages
         $errorMessages = [
-            'ERROR: no active session for this agent'       => 'Agent has no active session. Please log in to the dialer first.',
-            'ERROR: agent not logged in'                    => 'Agent is not logged in to the dialer.',
-            'ERROR: invalid user or pass'                   => 'Invalid dialer credentials.',
-            'ERROR: not logged in'                          => 'Dialer authentication failed.',
-            'ERROR: agent already in active call'           => 'Agent is already on an active call.',
-            'ERROR: phone number invalid'                   => 'The phone number is invalid.',
-            'ERROR: no campaign for agent'                  => 'No campaign is assigned to this agent.',
+            'ERROR: no active session for this agent' => 'Agent has no active session. Please log in to the dialer first.',
+            'ERROR: agent not logged in' => 'Agent is not logged in to the dialer.',
+            'ERROR: invalid user or pass' => 'Invalid dialer credentials.',
+            'ERROR: not logged in' => 'Dialer authentication failed.',
+            'ERROR: agent already in active call' => 'Agent is already on an active call.',
+            'ERROR: phone number invalid' => 'The phone number is invalid.',
+            'ERROR: no campaign for agent' => 'No campaign is assigned to this agent.',
         ];
 
         $humanMessage = $errorMessages[$responseBody]
@@ -1297,7 +1298,7 @@ class LeadController extends Controller
         return response()->json([
             'success' => false,
             'message' => $humanMessage,
-            'raw'     => $responseBody,
+            'raw' => $responseBody,
         ], 422);
     }
 }
