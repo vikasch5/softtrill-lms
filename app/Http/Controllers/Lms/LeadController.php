@@ -1235,8 +1235,9 @@ class LeadController extends Controller
         $phone = $request->input('phone');
         $agentId = auth()->id();
 
+        $serverIp = gethostbyname(gethostname());
         // Hard-coded server IP (or swap back to gethostbyname(gethostname()) for auto-resolve)
-        $serverIp = '182.77.61.13:8082';
+        // $serverIp = '182.77.61.13:8082';
 
         $params = http_build_query([
             'source' => 'test',
@@ -1252,7 +1253,7 @@ class LeadController extends Controller
         ]);
 
         $fullUrl = "http://{$serverIp}/Client-Dir/api.php?" . $params;
-        dd($fullUrl);
+        // dd($fullUrl);
 
         // Use cURL — works regardless of allow_url_fopen php.ini setting
         $ch = curl_init();
