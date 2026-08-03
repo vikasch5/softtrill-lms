@@ -52,6 +52,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard/widgets/fields/{list}', [DashboardController::class, 'getFields'])->name('lms.dashboard.widgets.fields');
     Route::get('/dashboard/widget-data/{id}', [DashboardController::class, 'widgetData'])->name('lms.dashboard.widget.data');
     Route::get('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
+    Route::post('/dialer-call', [LeadController::class, 'dialerCall'])->name('lms.dialer.call');
 });
 
 /*

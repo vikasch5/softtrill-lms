@@ -1220,4 +1220,82 @@ class LeadController extends Controller
 
         return response()->json($users);
     }
+
+    /**
+     * Proxy the external dialer API call.
+     * Resolves the server's local IP and uses the authenticated user's ID as agent.
+     */
+    public function dialerCall(Request $request)
+    {
+        $request->validate([
+            'phone' => 'required|string|max:20',
+        ]);
+
+        $phone    = $request->input('phone');
+        $agentId  = auth()->id();
+
+        // Resolve the local IP of the server
+        $serverIp = gethostbyname(gethostname());
+
+        $apiUrl = "http://{$serverIp}/Client-Dir/api.php";
+
+        $params = http_build_query([
+            'source'      => 'test',
+            'user'        => '7777',
+            'pass'        => '7777',
+            'agent_user'  => $agentId,
+            'function'    => 'external_dial',
+            'value'       => $phone,
+            'phone_code'  => '0',
+            'search'      => 'YES',
+            'preview'     => 'NO',
+            'focus'       => 'YES',
+        ]);
+
+        $fullUrl = $apiUrl . '?' . $params;
+
+        $ctx = stream_context_create([
+            'http' => [
+                'timeout' => 10,
+            ],
+        ]);
+
+        $responseBody = @file_get_contents($fullUrl, false, $ctx);
+
+        if ($responseBody === false) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to reach dialer server. Please check the server connection.',
+            ], 502);
+        }
+
+        $responseBody = trim($responseBody);
+
+        if (str_starts_with($responseBody, 'SUCCESS')) {
+            return response()->json([
+                'success' => true,
+                'message' => $responseBody,
+            ]);
+        }
+
+        // Map common dialer error codes to human-readable messages
+        $errorMessages = [
+            'ERROR: no active session for this agent'       => 'Agent has no active session. Please log in to the dialer first.',
+            'ERROR: agent not logged in'                    => 'Agent is not logged in to the dialer.',
+            'ERROR: invalid user or pass'                   => 'Invalid dialer credentials.',
+            'ERROR: not logged in'                          => 'Dialer authentication failed.',
+            'ERROR: agent already in active call'           => 'Agent is already on an active call.',
+            'ERROR: phone number invalid'                   => 'The phone number is invalid.',
+            'ERROR: no campaign for agent'                  => 'No campaign is assigned to this agent.',
+        ];
+
+        $humanMessage = $errorMessages[$responseBody]
+            ?? ('Dialer error: ' . $responseBody);
+
+        return response()->json([
+            'success' => false,
+            'message' => $humanMessage,
+            'raw'     => $responseBody,
+        ], 422);
+    }
 }

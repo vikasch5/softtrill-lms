@@ -280,7 +280,7 @@
 
                                     </td>
 
-                                    <td><a href="#" class="btn btn-success"><i class="ri-phone-line"></i></a></td>
+                                    <td><a href="#" class="btn btn-success dialer-call" data-phone="{{ $lead->phone_number }}" data-id="{{ $lead->id }}"><i class="ri-phone-line"></i></a></td>
 
 
                                     <td>
@@ -670,5 +670,53 @@
                 });
             });
         });
+
+        // ─── Dialer Call ──────────────────────────────────────────────────────────
+        $(document).on('click', '.dialer-call', function (e) {
+            e.preventDefault();
+
+            const $btn   = $(this);
+            const phone  = $btn.data('phone');
+
+            if (!phone) {
+                notify_it('error', 'No phone number found for this lead.');
+                return;
+            }
+
+            // Visual feedback: disable button & show spinner
+            $btn.prop('disabled', true)
+                .html('<span class="spinner-border spinner-border-sm" role="status"></span>');
+
+            $.ajax({
+                url    : '{{ route('lms.dialer.call') }}',
+                method : 'POST',
+                data   : {
+                    _token : '{{ csrf_token() }}',
+                    phone  : phone,
+                },
+                success: function (response) {
+                    if (response.success) {
+                        notify_it('success', 'Call initiated successfully for ' + phone);
+                    } else {
+                        notify_it('error', response.message || 'Dialer call failed.');
+                    }
+                },
+                error: function (xhr) {
+                    let message = 'An unexpected error occurred while initiating the call.';
+
+                    if (xhr.responseJSON?.message) {
+                        message = xhr.responseJSON.message;
+                    }
+
+                    notify_it('error', message);
+                },
+                complete: function () {
+                    // Restore button icon
+                    $btn.prop('disabled', false)
+                        .html('<i class="ri-phone-line"></i>');
+                }
+            });
+        });
+        // ─────────────────────────────────────────────────────────────────────────
     </script>
 @endsection
