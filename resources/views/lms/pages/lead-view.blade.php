@@ -582,6 +582,33 @@
             opacity: .87;
         }
 
+        .lv-btn-danger {
+            width: 100%;
+            justify-content: center;
+            padding: 9px;
+            background: #dc3545;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity .15s;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .lv-btn-danger:hover {
+            opacity: .87;
+        }
+
+        .lv-btn-danger:disabled {
+            opacity: .65;
+            cursor: not-allowed;
+        }
+
         .lv-btn-secondary {
             width: 100%;
             justify-content: center;
@@ -1122,6 +1149,14 @@
                                 <i class="ri-save-line"></i> Update lead
                             </button>
                         </form>
+
+                        @if(request('source') === 'dialer')
+                        <div class="mt-3" id="dialer-disconnect-wrap">
+                            <button type="button" id="btn-dialer-disconnect" class="lv-btn-danger w-100">
+                                <i class="ri-phone-off-line"></i> Disconnect Call
+                            </button>
+                        </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -1201,6 +1236,42 @@ $(document).ready(function() {
             }
         });
     });
+
+    // ── Dialer: Disconnect Call button ───────────────────────────────────────
+    $('#btn-dialer-disconnect').on('click', function () {
+        triggerDialerHangup();
+    });
+
+    function triggerDialerHangup() {
+        const $btn = $('#btn-dialer-disconnect');
+        if (!$btn.length) return;
+
+        $btn.prop('disabled', true)
+            .html('<span class="spinner-border spinner-border-sm me-1" role="status"></span> Disconnecting...');
+
+        $.ajax({
+            url    : '{{ route('lms.dialer.hangup') }}',
+            method : 'POST',
+            data   : { _token: '{{ csrf_token() }}' },
+            success: function (response) {
+                if (response.success) {
+                    notify_it('success', 'Call disconnected successfully.');
+                    $btn.closest('#dialer-disconnect-wrap').fadeOut(400);
+                } else {
+                    notify_it('error', response.message || 'Hangup failed.');
+                    $btn.prop('disabled', false)
+                        .html('<i class="ri-phone-off-line"></i> Disconnect Call');
+                }
+            },
+            error: function (xhr) {
+                const msg = xhr.responseJSON?.message || 'An unexpected error occurred.';
+                notify_it('error', msg);
+                $btn.prop('disabled', false)
+                    .html('<i class="ri-phone-off-line"></i> Disconnect Call');
+            }
+        });
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
 });
 </script>
