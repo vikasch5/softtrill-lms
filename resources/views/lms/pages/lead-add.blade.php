@@ -33,7 +33,7 @@
                                     <select name="list_id" class="form-control">
                                         <option value="">Create New List</option>
                                         @foreach($lists as $list)
-                                            <option value="{{ $list->id }}">{{ $list->list_name }}</option>
+                                            <option value="{{ $list->id }}">{{ $list->name }}</option>
                                         @endforeach
                                     </select>
                                 </div>

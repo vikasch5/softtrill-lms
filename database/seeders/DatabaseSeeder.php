@@ -22,5 +22,6 @@ class DatabaseSeeder extends Seeder
         //     'email' => 'test@example.com',
         // ]);
         new RoleSeeder();
+        new PermissionSeeder();
     }
 }

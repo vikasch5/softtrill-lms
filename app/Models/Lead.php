@@ -8,6 +8,7 @@ class Lead extends Model
 {
     protected $fillable = [
         'id',
+        'lead_id',
         'added_by',
         'tenant_id',
         'list_id',
@@ -27,6 +28,22 @@ class Lead extends Model
     protected $casts = [
         'data' => 'array',
     ];
+
+    protected static function booted(): void
+    {
+        static::created(function (Lead $lead) {
+            if (blank($lead->lead_id) || $lead->lead_id === '0') {
+                $lead->forceFill([
+                    'lead_id' => self::formatLeadId($lead->getKey()),
+                ])->saveQuietly();
+            }
+        });
+    }
+
+    public static function formatLeadId(int $id): string
+    {
+        return 'LS' . str_pad((string) $id, 6, '0', STR_PAD_LEFT);
+    }
 
     public function list()
     {

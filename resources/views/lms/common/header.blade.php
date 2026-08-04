@@ -241,6 +241,13 @@
     <div class="header-toolbar">
         <div class="header-toolbar-start">
             <div class="d-flex align-items-center gap-4">
+                @if(($isDialerLeadView ?? false))
+                    <div>
+                        <a href="{{ route('lms.dashboard') }}" class="sidebar-logo d-flex justify-content-center">
+                            <img src="{{ asset('lms/images/logo.png') }}" alt="site logo" class="light-logo d-flex justify-content-center">
+                        </a>
+                    </div>
+                @endif
                 <button type="button" class="sidebar-toggle">
                     <iconify-icon icon="heroicons:bars-3-solid" class="icon text-2xl non-active"></iconify-icon>
                     <iconify-icon icon="iconoir:arrow-right" class="icon text-2xl active"></iconify-icon>

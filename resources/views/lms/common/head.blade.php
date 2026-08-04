@@ -35,5 +35,7 @@
     <!-- main css -->
     <link rel="stylesheet" href="{{ asset('lms/css/style.css') }}">
 
+    <link rel="stylesheet" href="{{ asset('vendor/flasher/flasher.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('vendor/flasher/flasher.min.js') }}">
     <link rel="stylesheet" href="{{ asset('vendor/flasher/sweetalert2.min.css') }}">
 </head>

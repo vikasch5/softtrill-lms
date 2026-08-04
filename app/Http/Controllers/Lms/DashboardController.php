@@ -122,8 +122,8 @@ class DashboardController extends Controller
 
     public function dashboardWidget()
     {
-        // $lists = LeadList::get();
-        $lists = [];
+        $lists = LeadList::get();
+        // $lists = [];
         return view('lms.pages.dashboard-widget', compact('lists'));
     }
 
@@ -142,7 +142,7 @@ class DashboardController extends Controller
             'field_id' => 'nullable|exists:lead_fields,id',
             'chart_type' => 'required|in:card,bar,line,pie,doughnut,area',
             'aggregate' => 'required|in:count,sum,avg,min,max',
-            'width' => 'required|integer|min:3|max:12',
+            'width' => 'required|integer|min:2|max:12',
             'height' => 'required|integer|min:200',
             'sort_order' => 'nullable|integer',
             'group_by' => 'nullable|in:day,week,month,year',
@@ -192,12 +192,17 @@ class DashboardController extends Controller
         return response($html);
     }
 
-    public function widgetData($id)
+    public function widgetData($id, Request $request)
     {
         $widget = DashboardWidget::findOrFail($id);
 
+        // Allow the UI filter (Today/Weekly/Monthly/Yearly) to override group_by
+        $periodMap = ['day' => 'day', 'week' => 'week', 'month' => 'month', 'year' => 'year'];
+        $period    = $periodMap[$request->query('period')] ?? null;
+
         return response()->json(
-            app(DashboardWidgetService::class)->generate($widget)
+            app(DashboardWidgetService::class)->generate($widget, $period)
         );
     }
+
 }

@@ -61,7 +61,7 @@
                                                     @endphp
 
                                                     <img style="width:50px;height:50px;object-fit:cover"
-                                                        src="{{ $photo ? asset('storage/'. $photo) : asset('images/default-user.png') }}"
+                                                        src="{{ $photo ? asset('storage/'. $photo) : asset('lms/images/sample-user.jpg') }}"
                                                         alt="Image" class="radius-8 me-12">
 
                                                     <div class="flex-grow-1">

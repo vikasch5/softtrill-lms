@@ -237,6 +237,7 @@
                                 class="form-control"
                                 name="width">
 
+                                <option value="2" @selected(old('width', $widget->width ?? '') == '2')>2 Columns</option>
                                 <option value="3" @selected(old('width', $widget->width ?? '') == '3')>3 Columns</option>
                                 <option value="4" @selected(old('width', $widget->width ?? '') == '4')>4 Columns</option>
                                 <option value="6" @selected(old('width', $widget->width ?? '6') == '6')>6 Columns</option>

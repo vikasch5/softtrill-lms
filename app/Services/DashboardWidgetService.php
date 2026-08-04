@@ -5,28 +5,28 @@ namespace App\Services;
 use App\Models\DashboardWidget;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Database\Query\Expression;
 class DashboardWidgetService
 {
     /** Cache TTL in seconds (10 minutes) */
     const CACHE_TTL = 600;
 
-    public function generate(DashboardWidget $widget)
+    public function generate(DashboardWidget $widget, ?string $period = null)
     {
-        // Cache key is busted whenever widget settings change
-        $key = 'widget_chart_' . $widget->id . '_' . md5(
+        // Cache key is busted whenever widget settings or the selected period change
+        $key = 'widget_chart_v3_' . $widget->id . '_' . ($period ?? 'default') . '_' . md5(
             $widget->chart_type . $widget->list_id . $widget->field_id .
             $widget->aggregate . $widget->group_by . $widget->height
         );
 
-        return Cache::remember($key, self::CACHE_TTL, function () use ($widget) {
+        return Cache::remember($key, self::CACHE_TTL, function () use ($widget, $period) {
             switch ($widget->chart_type) {
                 case 'card':     return $this->card($widget);
                 case 'pie':      return $this->pie($widget);
                 case 'doughnut': return $this->doughnut($widget);
-                case 'bar':      return $this->bar($widget);
-                case 'line':     return $this->line($widget);
-                case 'area':     return $this->area($widget);
+                case 'bar':      return $this->bar($widget, $period);
+                case 'line':     return $this->line($widget, $period);
+                case 'area':     return $this->area($widget, $period);
                 default:         return [];
             }
         });
@@ -69,26 +69,38 @@ class DashboardWidgetService
         return $d;
     }
 
-    protected function bar($widget)
+    protected function bar(DashboardWidget $widget, ?string $period = null)
     {
-        $rows = $this->groupedRows($widget);
+        // $period from UI select overrides the widget's saved group_by
+        $effectivePeriod = $period ?? $widget->group_by;
+        $rows = $effectivePeriod
+            ? $this->timeSeriesRows($widget, $effectivePeriod)
+            : $this->groupedRows($widget);
+
         return [
             'type'        => 'bar',
             'chart'       => ['type' => 'bar', 'height' => (int)($widget->height ?? 264), 'toolbar' => ['show' => false]],
             'series'      => [['name' => $widget->title, 'data' => $rows->pluck('total')->values()->toArray()]],
-            'plotOptions' => ['bar' => ['borderRadius' => 8, 'columnWidth' => '23%', 'borderRadiusApplication' => 'end', 'endingShape' => 'rounded']],
-            'fill'        => ['type' => 'gradient', 'colors' => ['#487FFF'], 'gradient' => ['shade' => 'light', 'type' => 'vertical', 'shadeIntensity' => 0.5, 'gradientToColors' => ['#487FFF'], 'inverseColors' => false, 'opacityFrom' => 1, 'opacityTo' => 1, 'stops' => [0, 100]]],
+            'plotOptions' => ['bar' => ['borderRadius' => 4, 'columnWidth' => 10, 'endingShape' => 'rounded']],
             'dataLabels'  => ['enabled' => false],
+            'stroke'      => ['show' => true, 'width' => 2, 'colors' => ['transparent']],
             'grid'        => ['show' => true, 'borderColor' => '#D1D5DB', 'strokeDashArray' => 4, 'position' => 'back'],
-            'xaxis'       => ['categories' => $rows->pluck('label')->values()->toArray(), 'labels' => ['style' => ['fontSize' => '13px']]],
-            'yaxis'       => ['labels' => ['style' => ['fontSize' => '13px']]],
+            'xaxis'       => [
+                'categories' => $rows->pluck('label')->values()->toArray(),
+                'axisBorder' => ['show' => false],
+                'labels'     => ['style' => ['fontSize' => '12px']],
+            ],
+            'yaxis'       => ['labels' => ['style' => ['fontSize' => '12px']]],
+            'fill'        => ['opacity' => 1],
             'colors'      => ['#487FFF'],
         ];
     }
 
-    protected function line($widget)
+
+    protected function line(DashboardWidget $widget, ?string $period = null)
     {
-        $rows = $this->timeSeriesRows($widget);
+        $effectivePeriod = $period ?? $widget->group_by ?? 'month';
+        $rows = $this->timeSeriesRows($widget, $effectivePeriod);
         return [
             'type'       => 'line',
             'chart'      => ['type' => 'line', 'height' => (int)($widget->height ?? 264), 'toolbar' => ['show' => false], 'zoom' => ['enabled' => false]],
@@ -104,9 +116,10 @@ class DashboardWidgetService
         ];
     }
 
-    protected function area($widget)
+    protected function area(DashboardWidget $widget, ?string $period = null)
     {
-        $rows = $this->timeSeriesRows($widget);
+        $effectivePeriod = $period ?? $widget->group_by ?? 'month';
+        $rows = $this->timeSeriesRows($widget, $effectivePeriod);
         return [
             'type'       => 'area',
             'chart'      => ['type' => 'area', 'height' => (int)($widget->height ?? 264), 'toolbar' => ['show' => false]],
@@ -125,21 +138,7 @@ class DashboardWidgetService
     protected function groupedRows($widget)
     {
         $query     = DB::table('leads')->where('list_id', $widget->list_id);
-        $aggregate = $widget->aggregate ?? 'count';
-
-        // Build the aggregate SQL expression
-        if ($aggregate !== 'count' && $widget->field_id) {
-            $field = DB::table('lead_fields')->where('id', $widget->field_id)->first();
-            if ($field) {
-                $slug    = $field->slug;
-                $expr    = "CAST(JSON_UNQUOTE(JSON_EXTRACT(data, '$.{$slug}')) AS DECIMAL(15,2))";
-                $aggExpr = strtoupper($aggregate) . "({$expr})";
-            } else {
-                $aggExpr = 'COUNT(*)';
-            }
-        } else {
-            $aggExpr = 'COUNT(*)';
-        }
+        $aggExpr   = $this->aggregateExpression($widget);
 
         // Group by status (categorical dimension), apply aggregate on the value field
         return $query
@@ -150,19 +149,68 @@ class DashboardWidgetService
             ->get();
     }
 
-    protected function timeSeriesRows($widget)
+    protected function timeSeriesRows($widget, ?string $groupBy = null)
     {
-        $query = DB::table('leads')->where('list_id', $widget->list_id);
-        $fmt = ['day' => '%Y-%m-%d','week' => '%x-W%v','month' => '%Y-%m','year' => '%Y'][$widget->group_by ?? 'month'] ?? '%Y-%m';
-        return $query->select(DB::raw("DATE_FORMAT(created_at, '$fmt') AS label"), DB::raw('COUNT(*) AS total'))->groupBy('label')->orderBy('label')->get();
+        $query   = DB::table('leads')->where('list_id', $widget->list_id);
+        $groupBy = $groupBy ?? $widget->group_by ?? 'month';
+        $aggExpr = $this->aggregateExpression($widget);
+        $groups  = [
+            'day' => [
+                'label' => "DATE_FORMAT(created_at, '%d %b')",
+                'sort' => 'DATE(created_at)',
+            ],
+            'week' => [
+                'label' => "CONCAT(DATE_FORMAT(DATE_SUB(DATE(created_at), INTERVAL WEEKDAY(created_at) DAY), '%d %b'), ' - ', DATE_FORMAT(DATE_ADD(DATE_SUB(DATE(created_at), INTERVAL WEEKDAY(created_at) DAY), INTERVAL 6 DAY), '%d %b'))",
+                'sort' => 'DATE_SUB(DATE(created_at), INTERVAL WEEKDAY(created_at) DAY)',
+            ],
+            'month' => [
+                'label' => "DATE_FORMAT(created_at, '%b %Y')",
+                'sort' => "DATE_FORMAT(created_at, '%Y-%m')",
+            ],
+            'year' => [
+                'label' => "DATE_FORMAT(created_at, '%Y')",
+                'sort' => 'YEAR(created_at)',
+            ],
+        ];
+        $group = $groups[$groupBy] ?? $groups['month'];
+
+        return $query
+            ->select(DB::raw("{$group['label']} AS label"), DB::raw("{$aggExpr} AS total"), DB::raw("{$group['sort']} AS sort_order"))
+            ->groupBy('label', 'sort_order')
+            ->orderBy('sort_order')
+            ->get();
     }
 
-    protected function fieldColumn($widget): string
+    protected function aggregateExpression($widget): string
+    {
+        $aggregate = $widget->aggregate ?? 'count';
+
+        if ($aggregate !== 'count' && $widget->field_id) {
+            $field = DB::table('lead_fields')->where('id', $widget->field_id)->first();
+
+            if ($field) {
+                $slug = str_replace("'", "\\'", $field->slug);
+                $expr = "CAST(JSON_UNQUOTE(JSON_EXTRACT(data, '$.\"{$slug}\"')) AS DECIMAL(15,2))";
+
+                return strtoupper($aggregate) . "({$expr})";
+            }
+        }
+
+        return 'COUNT(*)';
+    }
+
+    protected function fieldColumn($widget): Expression|string
     {
         if ($widget->field_id) {
             $field = DB::table('lead_fields')->where('id', $widget->field_id)->first();
-            if ($field) return DB::raw("CAST(JSON_UNQUOTE(JSON_EXTRACT(data, '$.$field->slug')) AS DECIMAL(15,2))");
+
+            if ($field) {
+                return DB::raw(
+                    "CAST(JSON_UNQUOTE(JSON_EXTRACT(data, '$.\"{$field->slug}\"')) AS DECIMAL(15,2))"
+                );
+            }
         }
+
         return 'id';
     }
 

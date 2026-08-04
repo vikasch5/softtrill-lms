@@ -25,6 +25,14 @@
                         <i class="ri-user-settings-line"></i>
                         Assign Lead
                     </button>
+
+                    <a href="{{ request()->filled('list_id') ? route('lms.leads.download', ['list_id' => request('list_id')]) : '#' }}"
+                        class="btn btn-outline-success"
+                        id="downloadLeadList"
+                        data-download-url="{{ route('lms.leads.download') }}">
+                        <i class="ri-download-2-line"></i>
+                        Download List
+                    </a>
                     @endrole
 
                     @role('Admin|Manager|Cluster')
@@ -63,7 +71,7 @@
                             </div>
                             <div class="d-flex gap-2 flex-wrap">
                                 @if($hasActiveFilters)
-                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2">
+                                    <span class="badge rounded-pill bg-light text-primary border border-primary d-inline-flex align-items-center justify-content-center px-3 py-2">
                                         Filters Active
                                     </span>
                                 @endif
@@ -230,7 +238,7 @@
                                     </td>
 
                                     <td>
-                                        {{ $lead->id }}
+                                        {{ $lead->lead_id ?: \App\Models\Lead::formatLeadId($lead->id) }}
                                     </td>
 
                                     <td>
@@ -293,7 +301,7 @@
 
                                         <div class="btn-group">
 
-                                            <a href="{{ route('lms.lead.view', $lead->id) }}" class="btn btn-sm btn-info me-1">
+                                            <a href="{{ route('lms.lead.view', $lead->lead_id) }}" class="btn btn-sm btn-info me-1">
                                                 <i class="ri-eye-line"></i>
                                             </a>
 
@@ -356,7 +364,7 @@
                             Assign Selected Leads
                         </h5>
                         <small class="text-muted">
-                            Select manager → supervisor → user to assign leads.
+                            Select through the hierarchy. The deepest selected user receives the leads.
                         </small>
                     </div>
 
@@ -367,54 +375,47 @@
                     <form id="assignLeadForm">
                         @csrf
 
-                        {{-- Step 1: Manager --}}
+                        <input type="hidden" id="assign_target_role" name="target_role">
+                        <input type="hidden" id="assign_user_id" name="user_id">
+
+                        @if(auth()->user()->hasAnyRole(['Admin', 'Cluster']))
+                            <div class="mb-3">
+                                <label for="assignment_manager" class="form-label fw-semibold">
+                                    <span class="badge bg-dark me-1">1</span> Manager
+                                </label>
+                                <select id="assignment_manager" class="form-select assignment-level" data-role="Manager">
+                                    <option value="">— Select Manager —</option>
+                                </select>
+                            </div>
+                        @endif
+
+                        @if(auth()->user()->hasAnyRole(['Admin', 'Cluster', 'Manager']))
+                            <div class="mb-3">
+                                <label for="assignment_teamleader" class="form-label fw-semibold">
+                                    <span class="badge bg-dark me-1">{{ auth()->user()->hasAnyRole(['Admin', 'Cluster']) ? '2' : '1' }}</span>
+                                    Team Leader
+                                </label>
+                                <select id="assignment_teamleader" class="form-select assignment-level" data-role="TeamLeader" disabled>
+                                    <option value="">— Select Manager First —</option>
+                                </select>
+                            </div>
+                        @endif
+
                         <div class="mb-3">
-                            <label for="assign_manager_id" class="form-label fw-semibold">
-                                <span class="badge bg-dark me-1">1</span> Select Manager
+                            <label for="assignment_agent" class="form-label fw-semibold">
+                                <span class="badge bg-dark me-1">
+                                    {{ auth()->user()->hasAnyRole(['Admin', 'Cluster']) ? '3' : (auth()->user()->hasRole('Manager') ? '2' : '1') }}
+                                </span>
+                                Agent
                             </label>
-                            <select id="assign_manager_id" name="manager_id" class="form-select">
-                                <option value="">— Select Manager —</option>
-                                @foreach($managers as $manager)
-                                    <option value="{{ $manager->id }}">{{ $manager->name }}</option>
-                                @endforeach
+                            <select id="assignment_agent" class="form-select assignment-level" data-role="Agent" disabled>
+                                <option value="">— Select Team Leader First —</option>
                             </select>
                         </div>
 
-                        {{-- Step 2: Supervisor --}}
-                        <div class="mb-3">
-                            <label for="assign_supervisor_id" class="form-label fw-semibold">
-                                <span class="badge bg-dark me-1">2</span> Select Supervisor
-                            </label>
-                            <div class="position-relative">
-                                <select id="assign_supervisor_id" name="supervisor_id" class="form-select" disabled>
-                                    <option value="">— Select Manager First —</option>
-                                </select>
-                                <div id="supervisorLoader"
-                                    class="position-absolute top-50 end-0 translate-middle-y me-4 d-none">
-                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <small id="supervisorCount" class="text-muted d-none"></small>
-                        </div>
-
-                        {{-- Step 3: User --}}
-                        <div class="mb-3">
-                            <label for="assign_user_id" class="form-label fw-semibold">
-                                <span class="badge bg-dark me-1">3</span> Select User
-                            </label>
-                            <div class="position-relative">
-                                <select id="assign_user_id" name="user_id" class="form-select" disabled required>
-                                    <option value="">— Select Supervisor First —</option>
-                                </select>
-                                <div id="userLoader" class="position-absolute top-50 end-0 translate-middle-y me-4 d-none">
-                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <small id="userCount" class="text-muted d-none"></small>
+                        <div id="assignUserLoader" class="d-none text-primary small">
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            Loading hierarchy...
                         </div>
                     </form>
                 </div>
@@ -436,9 +437,19 @@
         $(function () {
             const assignLeadModal = new bootstrap.Modal(document.getElementById('assignLeadModal'));
 
-            // Active AJAX requests (for aborting on rapid changes)
-            let supervisorXhr = null;
-            let userXhr = null;
+            $('#downloadLeadList').on('click', function (event) {
+                const listId = $('select[name="list_id"]').val();
+
+                if (!listId) {
+                    event.preventDefault();
+                    notify_it('error', 'Please select a list from Lead Filters before downloading.');
+                    return;
+                }
+
+                $(this).attr('href', $(this).data('download-url') + '?list_id=' + encodeURIComponent(listId));
+            });
+
+            let assignableUsersXhr = null;
 
             function getSelectedLeadIds() {
                 return $('.lead-checkbox:checked').map(function () {
@@ -468,99 +479,61 @@
                 $select.prop('disabled', data.length === 0);
             }
 
-            /**
-             * Fetch supervisors by manager (AJAX)
-             */
-            function fetchSupervisors(managerId) {
-                // Abort any pending request
-                if (supervisorXhr) supervisorXhr.abort();
+            function fetchAssignableUsers(role, parentId, $select, placeholder) {
+                if (assignableUsersXhr) assignableUsersXhr.abort();
 
-                // Reset supervisor & user dropdowns
-                resetSelect($('#assign_supervisor_id'), '— Loading... —');
-                resetSelect($('#assign_user_id'), '— Select Supervisor First —');
-                $('#supervisorCount').addClass('d-none');
-                $('#userCount').addClass('d-none');
-                $('#submitAssignLead').prop('disabled', true);
+                resetSelect($select, '— Loading... —');
+                $('#assignUserLoader').removeClass('d-none');
 
-                if (!managerId) {
-                    resetSelect($('#assign_supervisor_id'), '— Select Manager First —');
-                    return;
-                }
-
-                // Show loader
-                $('#supervisorLoader').removeClass('d-none');
-
-                supervisorXhr = $.ajax({
-                    url: '{{ route("lms.api.supervisors-by-manager") }}',
+                assignableUsersXhr = $.ajax({
+                    url: '{{ route("lms.api.assignable-users") }}',
                     method: 'GET',
-                    data: {manager_id: managerId},
+                    data: {role: role, parent_id: parentId || ''},
                     success: function (data) {
-                        populateSelect($('#assign_supervisor_id'), data, 'Select Supervisor');
-
-                        // Show count
-                        if (data.length > 0) {
-                            $('#supervisorCount').text(data.length + ' supervisor(s) found').removeClass('d-none');
-                        } else {
-                            $('#supervisorCount').text('No supervisors found under this manager').removeClass('d-none');
-                        }
+                        populateSelect($select, data, placeholder);
                     },
                     error: function (xhr) {
                         if (xhr.statusText !== 'abort') {
-                            resetSelect($('#assign_supervisor_id'), '— Error loading —');
+                            resetSelect($select, '— Error loading —');
+                            notify_it('error', xhr.responseJSON?.message || 'Unable to load users.');
                         }
                     },
                     complete: function () {
-                        $('#supervisorLoader').addClass('d-none');
+                        $('#assignUserLoader').addClass('d-none');
                     }
                 });
             }
 
-            /**
-             * Fetch users by supervisor (AJAX)
-             */
-            function fetchUsers(supervisorId, managerId) {
-                // Abort any pending request
-                if (userXhr) userXhr.abort();
+            function syncAssignmentTarget() {
+                const levels = [
+                    {select: '#assignment_agent', role: 'Agent'},
+                    {select: '#assignment_teamleader', role: 'TeamLeader'},
+                    {select: '#assignment_manager', role: 'Manager'}
+                ];
+                let selected = null;
 
-                // Reset user dropdown
-                resetSelect($('#assign_user_id'), '— Loading... —');
-                $('#userCount').addClass('d-none');
-                $('#submitAssignLead').prop('disabled', true);
-
-                if (!supervisorId) {
-                    resetSelect($('#assign_user_id'), '— Select Supervisor First —');
-                    return;
-                }
-
-                // Show loader
-                $('#userLoader').removeClass('d-none');
-
-                userXhr = $.ajax({
-                    url: '{{ route("lms.api.users-by-supervisor") }}',
-                    method: 'GET',
-                    data: {
-                        supervisor_id: supervisorId,
-                        manager_id: managerId
-                    },
-                    success: function (data) {
-                        populateSelect($('#assign_user_id'), data, 'Select User');
-
-                        // Show count
-                        if (data.length > 0) {
-                            $('#userCount').text(data.length + ' user(s) found').removeClass('d-none');
-                        } else {
-                            $('#userCount').text('No users found under this supervisor').removeClass('d-none');
-                        }
-                    },
-                    error: function (xhr) {
-                        if (xhr.statusText !== 'abort') {
-                            resetSelect($('#assign_user_id'), '— Error loading —');
-                        }
-                    },
-                    complete: function () {
-                        $('#userLoader').addClass('d-none');
+                levels.some(function (level) {
+                    const value = $(level.select).val();
+                    if (value) {
+                        selected = {id: value, role: level.role};
+                        return true;
                     }
+                    return false;
                 });
+
+                $('#assign_user_id').val(selected ? selected.id : '');
+                $('#assign_target_role').val(selected ? selected.role : '');
+                $('#submitAssignLead').prop('disabled', !selected);
+            }
+
+            function loadInitialAssignmentLevel() {
+                @if(auth()->user()->hasAnyRole(['Admin', 'Cluster']))
+                    fetchAssignableUsers('Manager', null, $('#assignment_manager'), 'Select Manager');
+                @elseif(auth()->user()->hasRole('Manager'))
+                    fetchAssignableUsers('TeamLeader', null, $('#assignment_teamleader'), 'Select Team Leader');
+                @elseif(auth()->user()->hasRole('TeamLeader'))
+                    fetchAssignableUsers('Agent', null, $('#assignment_agent'), 'Select Agent');
+                @endif
             }
 
             // Select All checkbox
@@ -586,27 +559,36 @@
 
                 // Reset form to initial state
                 $('#assignLeadForm')[0].reset();
-                resetSelect($('#assign_supervisor_id'), '— Select Manager First —');
-                resetSelect($('#assign_user_id'), '— Select Supervisor First —');
-                $('#supervisorCount, #userCount').addClass('d-none');
+                resetSelect($('#assignment_manager'), '— Select Manager —');
+                resetSelect($('#assignment_teamleader'), '— Select Manager First —');
+                resetSelect($('#assignment_agent'), '— Select Team Leader First —');
                 $('#submitAssignLead').prop('disabled', true);
 
                 assignLeadModal.show();
+                loadInitialAssignmentLevel();
             });
 
-            // Manager changed → fetch supervisors
-            $('#assign_manager_id').on('change', function () {
-                fetchSupervisors($(this).val());
+            $('#assignment_manager').on('change', function () {
+                resetSelect($('#assignment_teamleader'), '— Select Manager First —');
+                resetSelect($('#assignment_agent'), '— Select Team Leader First —');
+                syncAssignmentTarget();
+
+                if ($(this).val()) {
+                    fetchAssignableUsers('TeamLeader', $(this).val(), $('#assignment_teamleader'), 'Select Team Leader');
+                }
             });
 
-            // Supervisor changed → fetch users
-            $('#assign_supervisor_id').on('change', function () {
-                fetchUsers($(this).val(), $('#assign_manager_id').val());
+            $('#assignment_teamleader').on('change', function () {
+                resetSelect($('#assignment_agent'), '— Select Team Leader First —');
+                syncAssignmentTarget();
+
+                if ($(this).val()) {
+                    fetchAssignableUsers('Agent', $(this).val(), $('#assignment_agent'), 'Select Agent');
+                }
             });
 
-            // User changed → enable/disable submit button
-            $('#assign_user_id').on('change', function () {
-                $('#submitAssignLead').prop('disabled', !$(this).val());
+            $('#assignment_agent').on('change', function () {
+                syncAssignmentTarget();
             });
 
             // Submit
@@ -636,8 +618,7 @@
                     data: {
                         _token: '{{ csrf_token() }}',
                         lead_ids: selectedLeadIds,
-                        manager_id: $('#assign_manager_id').val(),
-                        supervisor_id: $('#assign_supervisor_id').val(),
+                        target_role: $('#assign_target_role').val(),
                         user_id: userId
                     },
                     success: function (response) {

@@ -1,12 +1,30 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 @include('lms.common.head')
-<body>
+@php
+    $isDialerLeadView = Route::currentRouteName() === 'lms.lead.view' && request('source') === 'dialer';
+@endphp
+<body class="{{ $isDialerLeadView ? 'dialer-lead-view' : '' }}">
     <div class="app-wrapper">
 <div class="body-overlay"></div>
 
-    @include('lms.common.sidebar')
-<main class="dashboard-main">
+    @unless($isDialerLeadView)
+        @include('lms.common.sidebar')
+    @endunless
+<main class="dashboard-main {{ $isDialerLeadView ? 'dashboard-main--full' : '' }}">
+@if($isDialerLeadView)
+    <style>
+        .dashboard-main--full {
+            margin-inline-start: 0 !important;
+            width: 100%;
+        }
+
+        .dialer-lead-view .sidebar-toggle,
+        .dialer-lead-view .sidebar-mobile-toggle {
+            display: none !important;
+        }
+    </style>
+@endif
 
 @include('lms.common.header')
 @yield('content')
@@ -40,6 +58,7 @@
   <!-- main js -->
   <script src="{{ asset('lms/js/app.js')}}"></script>
 
+{{-- homeOneChart.js is demo-only; dashboard uses dynamic ApexCharts via widget API --}}
 {{-- <script src="{{ asset('lms/js/homeOneChart.js')}}"></script> --}}
 <script src="{{ asset('lms/js/lib/jquery.validate.min.js') }}"></script>
     <script src="{{ asset('lms/js/validation.js')}}"></script>

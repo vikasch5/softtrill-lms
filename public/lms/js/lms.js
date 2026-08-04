@@ -120,6 +120,22 @@ $(document).ready(function () {
         e.preventDefault();
         var $form = $(this);
 
+        function getNotifyType(response) {
+            var type =
+                response?.notify_type ||
+                $form.attr("data-notify-type") ||
+                $form.find('[name="notify_type"]').val();
+
+            if (!type) return undefined;
+
+            type = String(type).toLowerCase();
+
+            if (type === "toaster" || type === "toast") return "toast";
+            if (type === "alert") return "alert";
+
+            return undefined;
+        }
+
         if (!$form.valid()) return; // jQuery validation
 
         var $submitBtn = $form.find('[type="submit"]');
@@ -136,7 +152,7 @@ $(document).ready(function () {
             success: function (response) {
                 $submitBtn.prop("disabled", false); // enable submit
                 if (response.success) {
-                    notify_it("success", response.message);
+                    notify_it("success", response.message, null, getNotifyType(response));
 
                     // Reset form if it's a create form
                     if (!$form.find('[name$="_id"]').val()) {
@@ -155,7 +171,7 @@ $(document).ready(function () {
                         }, 2000);
                     }
                 } else {
-                    notify_it("error", response.message);
+                    notify_it("error", response.message, null, getNotifyType(response));
                 }
             },
             error: function (xhr) {
@@ -176,7 +192,12 @@ $(document).ready(function () {
                 } else {
                     messages.push("An unexpected error occurred.");
                 }
-                notify_it("error", messages.join("<br>"));
+                notify_it(
+                    "error",
+                    messages.join("<br>"),
+                    null,
+                    getNotifyType(xhr.responseJSON),
+                );
             },
         });
     });
@@ -189,7 +210,7 @@ $(document).on("click", ".deleteRecord", function () {
 
     Swal.fire({
         title: "Are you sure?",
-        text: "Do you want to delete this course?",
+        text: "Do you want to delete this record?",
         icon: "warning",
         showCancelButton: true,
         confirmButtonText: "Yes, Delete",

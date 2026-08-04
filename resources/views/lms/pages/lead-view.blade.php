@@ -632,6 +632,226 @@
         }
 
         /* ── Char counter ── */
+        .lv-edit-modal .modal-dialog {
+            max-width: 1040px;
+        }
+
+        .lv-edit-modal .modal-content {
+            border: 0;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 18px 60px rgba(15, 23, 42, .18);
+        }
+
+        .lv-edit-head {
+            padding: 18px 22px;
+            border-bottom: 1px solid #edf0f3;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        }
+
+        .lv-edit-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #111827;
+            margin: 0;
+            line-height: 1.2;
+        }
+
+        .lv-edit-subtitle {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .lv-edit-body {
+            padding: 2px 22px 22px;
+            background: #f8fafc;
+        }
+
+        .lv-edit-summary {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 14px;
+            padding: 14px;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            background: #fff;
+            margin-bottom: 16px;
+        }
+
+        .lv-edit-lead {
+            display: flex;
+            align-items: center;
+            min-width: 0;
+            gap: 12px;
+        }
+
+        .lv-edit-avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: #212529;
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            flex: 0 0 auto;
+        }
+
+        .lv-edit-name {
+            font-size: 15px;
+            font-weight: 800;
+            color: #111827;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .lv-edit-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .lv-edit-meta span {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .lv-edit-section {
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            background: #fff;
+            overflow: hidden;
+            margin-bottom: 14px;
+        }
+
+        .lv-edit-section-head {
+            padding: 13px 16px;
+            border-bottom: 1px solid #edf0f3;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            background: #fff;
+        }
+
+        .lv-edit-section-title {
+            font-size: 13px;
+            font-weight: 800;
+            color: #212529;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin: 0;
+        }
+
+        .lv-edit-section-title i {
+            color: #6366f1;
+            font-size: 16px;
+        }
+
+        .lv-edit-section-note {
+            font-size: 11px;
+            color: #8a939d;
+        }
+
+        .lv-edit-section-body {
+            padding: 16px;
+        }
+
+        .lv-edit-field {
+            margin-bottom: 2px;
+        }
+
+        .lv-edit-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #495057;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .lv-edit-input {
+            width: 100%;
+            min-height: 40px;
+            padding: 9px 11px;
+            border: 1px solid #dee2e6;
+            border-radius: 9px;
+            color: #212529;
+            background: #fff;
+            font-size: 13px;
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+        .lv-edit-input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, .1);
+        }
+
+        textarea.lv-edit-input {
+            min-height: 98px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        select.lv-edit-input {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 32px;
+        }
+
+        .lv-edit-choice-box {
+            border: 1px solid #edf0f3;
+            border-radius: 9px;
+            padding: 9px 11px;
+            min-height: 40px;
+            background: #fbfcfd;
+        }
+
+        .lv-edit-choice-box .form-check {
+            margin-bottom: 6px;
+        }
+
+        .lv-edit-choice-box .form-check:last-child {
+            margin-bottom: 0;
+        }
+
+        .lv-edit-footer {
+            padding: 14px 22px;
+            border-top: 1px solid #edf0f3;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .lv-edit-footer-hint {
+            font-size: 12px;
+            color: #8a939d;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .lv-edit-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
         .lv-char {
             font-size: 11px;
             color: #8a939d;
@@ -667,6 +887,19 @@
             .lv-detail-grid {
                 grid-template-columns: 1fr;
             }
+
+            .lv-edit-summary {
+                grid-template-columns: 1fr;
+            }
+
+            .lv-edit-footer {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .lv-edit-actions {
+                justify-content: flex-end;
+            }
         }
     </style>
 
@@ -688,9 +921,9 @@
                                 <i class="ri-circle-fill" style="font-size:7px;"></i>
                                 {{ $status }}
                             </span>
-                            <a href="{{ route('lms.lead.edit', $lead->id) }}" class="lv-btn">
+                            <button type="button" class="lv-btn border-0" data-bs-toggle="modal" data-bs-target="#editLeadModal">
                                 <i class="ri-edit-line"></i> Edit lead
-                            </a>
+                            </button>
                         </div>
                     </div>
 
@@ -1101,9 +1334,10 @@
                         <span class="lv-card-head-title">Quick update</span>
                     </div>
                     <div class="lv-card-body--sm lv-card-body">
-                        <form action="{{ route('lms.leads.quick-update', $lead->id) }}" method="POST" class="ajaxForm">
+                        <form action="{{ route('lms.leads.quick-update', $lead->id) }}" method="POST" class="ajaxForm" data-notify-type="toaster">
                             @csrf
                             <input type="hidden" name="lead_id" value="{{ $lead->id }}">
+                            <input type="hidden" name="source" value="{{ request('source') }}">
 
                             <div class="lv-fgroup">
                                 <label class="lv-flabel" for="lv-feedback">Feedbacks</label>
@@ -1159,6 +1393,154 @@
                         @endif
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade lv-edit-modal" id="editLeadModal" tabindex="-1" aria-labelledby="editLeadModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="lv-edit-head d-flex justify-content-between align-items-start gap-3">
+                    <div>
+                        <h5 class="lv-edit-title" id="editLeadModalLabel">Edit lead details</h5>
+                        <div class="lv-edit-subtitle">Update this lead without leaving the dialer view.</div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <form method="POST" action="{{ route('lms.leads.update') }}" class="ajaxForm" data-notify-type="toaster">
+                    @csrf
+                    <input type="hidden" name="lead_id" value="{{ $lead->id }}">
+                    <input type="hidden" name="source" value="{{ request('source') }}">
+
+                    <div class="lv-edit-body">
+                        <div class="lv-edit-section">
+                            <div class="lv-edit-section-head">
+                                <h6 class="lv-edit-section-title">
+                                    <i class="ri-user-line"></i> Basic information
+                                </h6>
+                                <span class="lv-edit-section-note">Main dialer fields</span>
+                            </div>
+                            <div class="lv-edit-section-body">
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <div class="lv-edit-field">
+                                            <label class="lv-edit-label">Name</label>
+                                            <input type="text" name="name" value="{{ $lead->name }}" class="lv-edit-input">
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <div class="lv-edit-field">
+                                            <label class="lv-edit-label">Phone Number</label>
+                                            <input type="text" name="phone_number" value="{{ $lead->phone_number }}" class="lv-edit-input">
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <div class="lv-edit-field">
+                                            <label class="lv-edit-label">Email</label>
+                                            <input type="text" name="email" value="{{ $lead->email }}" class="lv-edit-input">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @if($fields->isNotEmpty())
+                            <div class="lv-edit-section">
+                                <div class="lv-edit-section-head">
+                                    <h6 class="lv-edit-section-title">
+                                        <i class="ri-list-settings-line"></i> List fields
+                                    </h6>
+                                    <span class="lv-edit-section-note">{{ $fields->count() }} custom field(s)</span>
+                                </div>
+                                <div class="lv-edit-section-body">
+                                    <div class="row g-3">
+                                        @foreach($fields as $field)
+                                            @php
+                                                $value = $lead->data[$field->slug] ?? '';
+                                                $options = $field->options ? json_decode($field->options, true) : [];
+                                                $inputValue = is_array($value) ? implode(',', $value) : $value;
+                                            @endphp
+
+                                            <div class="col-md-4">
+                                                <div class="lv-edit-field">
+                                                    <label class="lv-edit-label">
+                                                        {{ $field->name }}
+                                                        @if($field->is_required)
+                                                            <span class="text-danger">*</span>
+                                                        @endif
+                                                    </label>
+
+                                                    @if(in_array($field->type, ['text', 'email', 'phone', 'number', 'decimal', 'date', 'datetime'], true))
+                                                        <input
+                                                            type="{{ $field->type === 'phone' ? 'text' : ($field->type === 'datetime' ? 'datetime-local' : $field->type) }}"
+                                                            name="data[{{ $field->slug }}]"
+                                                            value="{{ $inputValue }}"
+                                                            class="lv-edit-input">
+                                                    @elseif($field->type === 'textarea')
+                                                        <textarea name="data[{{ $field->slug }}]" class="lv-edit-input" rows="3">{{ $inputValue }}</textarea>
+                                                    @elseif($field->type === 'select')
+                                                        <select name="data[{{ $field->slug }}]" class="lv-edit-input">
+                                                            <option value="">Select</option>
+                                                            @foreach($options as $option)
+                                                                <option value="{{ $option }}" {{ $value == $option ? 'selected' : '' }}>
+                                                                    {{ $option }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                    @elseif($field->type === 'radio')
+                                                        <div class="lv-edit-choice-box">
+                                                            @foreach($options as $option)
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input" type="radio" name="data[{{ $field->slug }}]"
+                                                                        value="{{ $option }}" {{ $value == $option ? 'checked' : '' }}>
+                                                                    <label class="form-check-label">{{ $option }}</label>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    @elseif($field->type === 'checkbox')
+                                                        @php
+                                                            $selected = is_array($value) ? $value : explode(',', (string) $value);
+                                                        @endphp
+
+                                                        <div class="lv-edit-choice-box">
+                                                            @foreach($options as $option)
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input" type="checkbox" name="data[{{ $field->slug }}][]"
+                                                                        value="{{ $option }}" {{ in_array($option, $selected, true) ? 'checked' : '' }}>
+                                                                    <label class="form-check-label">{{ $option }}</label>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    @elseif($field->type === 'boolean')
+                                                        <select name="data[{{ $field->slug }}]" class="lv-edit-input">
+                                                            <option value="1" {{ (string) $value === '1' ? 'selected' : '' }}>Yes</option>
+                                                            <option value="0" {{ (string) $value === '0' ? 'selected' : '' }}>No</option>
+                                                        </select>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+
+                    <div class="lv-edit-footer">
+                        <span class="lv-edit-footer-hint">
+                            <i class="ri-shield-check-line"></i> Changes save to this lead only.
+                        </span>
+                        <div class="lv-edit-actions">
+                            <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-dark">
+                            <i class="ri-save-line"></i> Update Lead
+                            </button>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -1255,7 +1637,7 @@ $(document).ready(function() {
             data   : { _token: '{{ csrf_token() }}' },
             success: function (response) {
                 if (response.success) {
-                    notify_it('success', 'Call disconnected successfully.');
+                    notify_it('success', 'Call disconnected successfully.','','toast');
                     $btn.closest('#dialer-disconnect-wrap').fadeOut(400);
 
                     // After 2 seconds, fire external_status then close window
@@ -1279,14 +1661,14 @@ $(document).ready(function() {
                     }, 2000);
 
                 } else {
-                    notify_it('error', response.message || 'Hangup failed.');
+                    notify_it('error', response.message || 'Hangup failed.','','toast');
                     $btn.prop('disabled', false)
                         .html('<i class="ri-phone-off-line"></i> Disconnect Call');
                 }
             },
             error: function (xhr) {
-                const msg = xhr.responseJSON?.message || 'An unexpected error occurred.';
-                notify_it('error', msg);
+                const msg = 'An unexpected error occurred.';
+                notify_it('error', msg,'','toast');
                 $btn.prop('disabled', false)
                     .html('<i class="ri-phone-off-line"></i> Disconnect Call');
             }

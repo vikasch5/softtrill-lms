@@ -32,6 +32,7 @@ class LeadController extends Controller
         $query = Lead::query()
             ->select([
                 'id',
+                'lead_id',
                 'list_id',
                 'assigned_to',
                 'status',
@@ -136,14 +137,146 @@ class LeadController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $managers = User::role('Manager')
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        $assignmentRoles = $this->getAssignableRoles($user);
 
         return view(
             'lms.pages.leads-list',
-            compact('leads', 'managers', 'lists', 'filterableFields')
+            compact('leads', 'lists', 'filterableFields', 'assignmentRoles')
         );
+    }
+
+    private function getAssignableRoles(User $user): array
+    {
+        if ($user->hasRole('Admin') || $user->hasRole('Cluster')) {
+            return ['Manager', 'TeamLeader', 'Agent'];
+        }
+
+        if ($user->hasRole('Manager')) {
+            return ['TeamLeader', 'Agent'];
+        }
+
+        if ($user->hasRole('TeamLeader')) {
+            return ['Agent'];
+        }
+
+        return [];
+    }
+
+    private function assignableUsersQuery(User $user, string $role)
+    {
+        $query = User::role($role)->select('users.id', 'users.name');
+
+        if ($user->hasRole('Admin')) {
+            return $query;
+        }
+
+        if ($user->hasRole('Cluster')) {
+            return $query->whereHas(
+                'details',
+                fn($details) =>
+                $details->where('cluster_id', $user->id)
+            );
+        }
+
+        if ($user->hasRole('Manager')) {
+            return $query->whereHas(
+                'details',
+                fn($details) =>
+                $details->where('manager_id', $user->id)
+            );
+        }
+
+        if ($user->hasRole('TeamLeader')) {
+            return $query->whereHas(
+                'details',
+                fn($details) =>
+                $details->where('teamleader_id', $user->id)
+            );
+        }
+
+        return $query->whereRaw('1 = 0');
+    }
+
+    public function downloadLeadList(Request $request)
+    {
+        $request->validate([
+            'list_id' => 'required|integer|exists:lead_lists,id',
+        ]);
+
+        $user = auth()->user();
+        $list = LeadList::findOrFail($request->integer('list_id'));
+
+        $fields = LeadField::where('list_id', $list->id)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get(['name', 'slug']);
+
+        $query = Lead::query()
+            ->where('list_id', $list->id)
+            ->select([
+                'id',
+                'lead_id',
+                'name',
+                'email',
+                'phone_number',
+                'status',
+                'assigned_to',
+                'data',
+                'created_at',
+            ]);
+
+        if (!$user->hasRole('Admin')) {
+            $visibleUserIds = $this->getVisibleUserIds($user);
+
+            $query->where(function ($leadQuery) use ($visibleUserIds) {
+                $leadQuery
+                    ->whereIn('assigned_to', $visibleUserIds)
+                    ->orWhereIn('added_by', $visibleUserIds);
+            });
+        }
+
+        $filename = Str::slug($list->name ?: 'lead-list') . '-dialer-' . now()->format('YmdHis') . '.csv';
+
+        return response()->streamDownload(function () use ($query, $fields) {
+            $file = fopen('php://output', 'w');
+
+            fputcsv($file, array_merge([
+                'lead_id',
+                'name',
+                'email',
+                'phone_number',
+                'status',
+                'assigned_to',
+                'created_at',
+            ], $fields->pluck('slug')->all()));
+
+            $query->orderBy('id')->chunkById(1000, function ($leads) use ($file, $fields) {
+                foreach ($leads as $lead) {
+                    $data = $lead->data ?? [];
+
+                    $row = [
+                        $lead->lead_id,
+                        $lead->name,
+                        $lead->email,
+                        $lead->phone_number,
+                        $lead->status,
+                        $lead->assigned_to,
+                        optional($lead->created_at)->format('Y-m-d H:i:s'),
+                    ];
+
+                    foreach ($fields as $field) {
+                        $value = $data[$field->slug] ?? null;
+                        $row[] = is_array($value) ? implode('|', $value) : $value;
+                    }
+
+                    fputcsv($file, $row);
+                }
+            }, 'id');
+
+            fclose($file);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
     }
 
     /**
@@ -664,27 +797,66 @@ class LeadController extends Controller
 
     public function leadAdd()
     {
-        $lists = LeadImportFile::where('tenant_id', auth()->user()->tenant_id)->get();
+        $lists = LeadList::where('tenant_id', auth()->user()->tenant_id)
+            ->where('is_active', 1)
+            ->orderBy('name')
+            ->get();
         $leadFields = LeadField::orderBy('sort_order')->get();
         return view('lms.pages.lead-add', compact('leadFields', 'lists'));
     }
 
     public function storeOrUpdate(Request $request, $id = null)
     {
-        DB::beginTransaction();
-
         try {
-            $tenantId = auth()->user()->tenant_id ?? null;
+            DB::beginTransaction();
+
+            $tenantId = auth()->id();
             $userId = auth()->id();
-            $listId = $request->lead_import_file_id;  // your list
 
             // =========================
             // VALIDATION
             // =========================
             $request->validate([
+                'name' => 'nullable|string|max:255',
                 'phone' => 'required|digits:10',
-                'email' => 'nullable|email',
+                'email' => 'nullable|email|max:255',
+                'list_id' => 'nullable|integer',
+                'list_name' => 'nullable|string|max:255',
+                'custom' => 'nullable|array',
             ]);
+
+            // Use the selected list, or create one when no list was selected.
+            // lead_import_file_id is retained as a fallback for older clients.
+            $requestedListId = $request->input('list_id', $request->lead_import_file_id);
+
+            if (!blank($requestedListId)) {
+                $list = LeadList::where('tenant_id', $tenantId)
+                    ->findOrFail($requestedListId);
+            } else {
+                $list = LeadList::create([
+                    'added_by' => $userId,
+                    'tenant_id' => $tenantId,
+                    'name' => $request->filled('list_name')
+                        ? trim($request->list_name)
+                        : 'Lead List ' . now()->format('YmdHis'),
+                    'description' => 'Auto-generated while creating a lead',
+                    'is_active' => 1,
+                    'created_by' => $userId,
+                ]);
+            }
+
+            $listId = $list->id;
+
+            $name = $request->filled('name') ? trim($request->name) : null;
+            $email = $request->filled('email')
+                ? strtolower(trim($request->email))
+                : null;
+            $phone = preg_replace('/\D/', '', (string) $request->phone);
+
+            // Keep manual creation consistent with LeadsImport.
+            $duplicateHash = md5(
+                $listId . '|' . strtolower($email ?? '') . '|' . $phone
+            );
 
             // =========================
             // FIND OR CREATE
@@ -696,13 +868,15 @@ class LeadController extends Controller
             // =========================
             // DUPLICATE CHECK (LIST BASED)
             // =========================
-            $duplicate = Lead::where('phone', $request->phone)
+            $duplicate = Lead::where('duplicate_hash', $duplicateHash)
                 ->where('tenant_id', $tenantId)
-                ->where('lead_import_file_id', $listId)
+                ->where('list_id', $listId)
                 ->when($id, fn($q) => $q->where('id', '!=', $id))
                 ->exists();
 
             if ($duplicate) {
+                DB::rollBack();
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Lead already exists in this list'
@@ -713,14 +887,15 @@ class LeadController extends Controller
             // BASIC FIELDS
             // =========================
             $lead->tenant_id = $tenantId;
-            $lead->lead_import_file_id = $listId;
-
-            $lead->name = $request->name;
-            $lead->phone = $request->phone;
-            $lead->email = $request->email;
-            $lead->city = $request->city;
-            // $lead->status = $request->status ?? 'new';
-
+            $lead->list_id = $listId;
+            $lead->name = $name;
+            $lead->phone_number = $phone;
+            $lead->email = $email;
+            $lead->email_index = $email;
+            $lead->phone_index = $phone;
+            $lead->duplicate_hash = $duplicateHash;
+            $lead->status = $lead->status ?: 'new';
+            $lead->added_by = $lead->added_by ?? $userId;
             $lead->assigned_to = $lead->assigned_to ?? $userId;
             $lead->created_by = $lead->created_by ?? $userId;
 
@@ -728,63 +903,38 @@ class LeadController extends Controller
             // DYNAMIC FIELDS
             // =========================
             $customFields = [];
-            $filterableInsert = [];
 
-            // fetch all fields once (optimized)
-            $leadFields = LeadField::select('id', 'slug', 'is_filterable')->get()->keyBy('slug');
+            // Import only accepts fields belonging to the selected list.
+            $fieldSlugs = LeadField::where('tenant_id', $tenantId)
+                ->where('list_id', $listId)
+                ->pluck('slug')
+                ->flip();
 
             foreach ($request->custom ?? [] as $slug => $value) {
-                // store in JSON (ALL fields)
-                $customFields[$slug] = $value;
-
-                // store in table only if filterable
-                if (isset($leadFields[$slug]) && $leadFields[$slug]->is_filterable) {
-                    $filterableInsert[] = [
-                        'field_id' => $leadFields[$slug]->id,
-                        'value' => is_array($value) ? json_encode($value) : $value,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
+                if ($fieldSlugs->has($slug) && !blank($value)) {
+                    $customFields[$slug] = $value;
                 }
             }
 
-            // save lead first
-            $lead->custom_fields = json_encode($customFields);
+            // Lead casts data to array, matching LeadsImport::create().
+            $lead->data = $customFields;
             $lead->save();
-
-            // =========================
-            // FILTERABLE FIELDS TABLE
-            // =========================
-
-            // delete old values (for update)
-            DB::table('lead_field_values')
-                ->where('lead_id', $lead->id)
-                ->delete();
-
-            // attach lead_id
-            foreach ($filterableInsert as &$row) {
-                $row['lead_id'] = $lead->id;
-            }
-
-            // bulk insert
-            if (!empty($filterableInsert)) {
-                DB::table('lead_field_values')->insert($filterableInsert);
-            }
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
                 'message' => $id ? 'Lead Updated Successfully' : 'Lead Created Successfully',
-                'lead_id' => $lead->id
+                'lead_id' => $lead->id,
+                'list_id' => $listId
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
 
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
-            ]);
+            ], 500);
         }
     }
 
@@ -814,29 +964,37 @@ class LeadController extends Controller
         $lead = Lead::findOrFail($id);
 
         $leadData = $request->input('data', []);
+        $email = $request->filled('email') ? strtolower(trim($request->email)) : null;
+        $phone = preg_replace('/\D/', '', (string) $request->phone_number);
 
         $lead->update([
             'name' => $request->name,
-            'email' => $request->email,
-            'phone_number' => $request->phone_number,
+            'email' => $email,
+            'phone_number' => $phone,
             'data' => $leadData,
-            'email_index' =>
-                $leadData['email']
-                    ?? null,
-            'phone_index' =>
-                $leadData['phone']
-                    ?? null,
+            'email_index' => $email,
+            'phone_index' => $phone,
         ]);
+
+        $redirectUrl = route(
+            'lms.lead.view',
+            $lead->lead_id ?: $lead->id
+        );
+
+        if ($request->source === 'dialer') {
+            $redirectUrl .= '?source=dialer';
+        }
 
         return response()->json([
             'success' => true,
-            'message' => 'Lead updated successfully.'
+            'message' => 'Lead updated successfully.',
+            'redirect_url' => $redirectUrl,
         ]);
     }
 
     public function leadsView($id)
     {
-        $lead = Lead::findOrFail($id);
+        $lead = Lead::where('lead_id', $id)->firstOrFail();
 
         $fields = LeadField::where(
             'list_id',
@@ -965,8 +1123,7 @@ class LeadController extends Controller
         $request->validate([
             'lead_ids' => 'required|array|min:1',
             'lead_ids.*' => 'required|integer|exists:leads,id',
-            'manager_id' => 'nullable|exists:users,id',
-            'supervisor_id' => 'nullable|exists:users,id',
+            'target_role' => 'required|string',
             'user_id' => 'required|exists:users,id',
         ]);
 
@@ -976,8 +1133,26 @@ class LeadController extends Controller
             $user = auth()->user();
             $tenantId = $user->tenant_id ?? null;
 
+            if (!in_array($request->target_role, $this->getAssignableRoles($user), true)) {
+                DB::rollBack();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You cannot assign leads to the selected role.',
+                ], 403);
+            }
+
             // dd($request->lead_ids);
             $leadQuery = Lead::whereIn('id', $request->lead_ids);
+
+            if (!$user->hasRole('Admin')) {
+                $visibleUserIds = $this->getVisibleUserIds($user);
+                $leadQuery->where(function ($query) use ($visibleUserIds) {
+                    $query
+                        ->whereIn('assigned_to', $visibleUserIds)
+                        ->orWhereIn('added_by', $visibleUserIds);
+                });
+            }
 
             // if ($tenantId) {
             //     $leadQuery->where('tenant_id', $tenantId);
@@ -989,13 +1164,25 @@ class LeadController extends Controller
             $leadIds = $leadQuery->pluck('id');
 
             if ($leadIds->isEmpty()) {
+                DB::rollBack();
+
                 return response()->json([
                     'success' => false,
                     'message' => 'No valid leads found for assignment.'
                 ], 404);
             }
 
-            $assignedUser = User::findOrFail($request->user_id);
+            $assignedUser = $this->assignableUsersQuery($user, $request->target_role)
+                ->find($request->user_id);
+
+            if (!$assignedUser) {
+                DB::rollBack();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The selected user is outside your assignment hierarchy.',
+                ], 403);
+            }
 
             Lead::whereIn('id', $leadIds)->update([
                 'assigned_to' => $assignedUser->id,
@@ -1010,8 +1197,7 @@ class LeadController extends Controller
                     'old_value' => null,
                     'user_id' => auth()->id(),
                     'new_value' => json_encode([
-                        'manager_id' => $request->manager_id,
-                        'supervisor_id' => $request->supervisor_id,
+                        'target_role' => $request->target_role,
                         'user_id' => $assignedUser->id,
                         'user_name' => $assignedUser->name,
                     ]),
@@ -1121,13 +1307,19 @@ class LeadController extends Controller
     public function quickUpdate(Request $request)
     {
         $request->validate([
+            'lead_id' => 'required|integer|exists:leads,id',
             'feedback_id' => 'required|exists:feedbacks,id',
             'sub_feedback_id' => 'nullable|exists:feedbacks,id',
             'next_followup_at' => 'nullable|date',
             'remarks' => 'nullable|string|max:2000',
+            'source' => 'nullable|in:dialer',
         ]);
 
         try {
+            DB::beginTransaction();
+
+            $lead = Lead::findOrFail($request->lead_id);
+
             LeadFeedback::create([
                 'tenant_id' => auth()->id(),
                 'lead_id' => $request->lead_id,
@@ -1139,16 +1331,19 @@ class LeadController extends Controller
                 'remarks' => $request->remarks,
             ]);
 
-            // dd($request->all());
-
+            $leadUpdates = [];
             if ($request->filled('next_followup_at')) {
-                Lead::where('id', $request->lead_id)
-                    ->update([
-                        'next_followup_at' => $request->next_followup_at,
-                    ]);
+                $leadUpdates['next_followup_at'] = $request->next_followup_at;
             }
 
-            DB::beginTransaction();
+            if ($request->source === 'dialer') {
+                $leadUpdates['assigned_to'] = auth()->id();
+            }
+
+            if (!empty($leadUpdates)) {
+                $lead->update($leadUpdates);
+            }
+
             LeadActivityLog::create([
                 'tenant_id' => auth()->id(),
                 'lead_id' => $request->lead_id,
@@ -1161,6 +1356,8 @@ class LeadController extends Controller
                     'sub_feedback_id' => $request->sub_feedback_id,
                     'followup_date' => $request->next_followup_at,
                     'remarks' => $request->remarks,
+                    'source' => $request->source,
+                    'assigned_to' => $request->source === 'dialer' ? auth()->id() : null,
                 ]),
             ]);
             DB::commit();
@@ -1176,6 +1373,62 @@ class LeadController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Return only users the authenticated user may receive leads under the
+     * selected hierarchy level.
+     */
+    public function getAssignableUsers(Request $request)
+    {
+        $request->validate([
+            'role' => 'required|string',
+            'parent_id' => 'nullable|integer|exists:users,id',
+        ]);
+
+        $user = auth()->user();
+
+        abort_unless(
+            in_array($request->role, $this->getAssignableRoles($user), true),
+            403,
+            'You cannot assign leads to the selected role.'
+        );
+
+        $query = $this->assignableUsersQuery($user, $request->role);
+
+        if ($request->filled('parent_id') && $request->role === 'TeamLeader') {
+            $managerAllowed = $user->hasRole('Manager')
+                ? $request->integer('parent_id') === $user->id
+                : $this->assignableUsersQuery($user, 'Manager')
+                    ->whereKey($request->integer('parent_id'))
+                    ->exists();
+
+            abort_unless($managerAllowed, 403, 'The selected manager is outside your hierarchy.');
+
+            $query->whereHas(
+                'details',
+                fn($details) =>
+                $details->where('manager_id', $request->integer('parent_id'))
+            );
+        }
+
+        if ($request->filled('parent_id') && $request->role === 'Agent') {
+            $teamLeaderAllowed = $user->hasRole('TeamLeader')
+                ? $request->integer('parent_id') === $user->id
+                : $this->assignableUsersQuery($user, 'TeamLeader')
+                    ->whereKey($request->integer('parent_id'))
+                    ->exists();
+
+            abort_unless($teamLeaderAllowed, 403, 'The selected Team Leader is outside your hierarchy.');
+
+            $query->whereHas(
+                'details',
+                fn($details) =>
+                $details->where('teamleader_id', $request->integer('parent_id'))
+            );
+        }
+
+        return response()->json($query->orderBy('name')->get());
     }
 
     /**
