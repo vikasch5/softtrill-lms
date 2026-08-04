@@ -14,7 +14,7 @@ class LicenseService
      * How long (in seconds) to cache a successful license response.
      * 300 = 5 minutes. Status changes on softtrill.com take effect within this window.
      */
-    private const CACHE_TTL = 300;
+    private const CACHE_TTL = 3600;
 
     /**
      * Fail-open grace period when softtrill.com is unreachable (24 hours).

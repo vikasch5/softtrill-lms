@@ -34,7 +34,11 @@ Artisan::command('leads:sample
     $tenantId = $user->tenant_id ?? $user->id;
 
     $leadList = $listId
-        ? LeadList::where('tenant_id', $tenantId)->find($listId)
+        ? LeadList::where('tenant_id', $tenantId)
+            ->where(function ($q) use ($listId) {
+                $q->where('name', $listId)
+                  ->orWhere('id', is_numeric($listId) ? (int) $listId : 0);
+            })->first()
         : LeadList::where('tenant_id', $tenantId)->orderBy('id')->first();
 
     if (!$leadList) {
@@ -130,28 +134,37 @@ Artisan::command('leads:sample
 
             $nextFollowupAt = $faker->optional(0.65)->dateTimeBetween('now', '+30 days');
             $lastFollowupAt = $faker->optional(0.35)->dateTimeBetween('-30 days', 'now');
-            $now = now();
+            $randomMonth = rand(1, (int) now()->format('n'));
+            $now = now()->setMonth($randomMonth)->setDay(rand(1, 28))->setHour(rand(0, 23))->setMinute(rand(0, 59))->setSecond(rand(0, 59));
 
             $batch[] = [
-                'added_by' => $user->id,
-                'tenant_id' => $tenantId,
-                'list_id' => $leadList->id,
-                'assigned_to' => $user->id,
-                'status' => $status,
-                'name' => $name,
-                'email' => $email,
-                'phone_number' => $phoneNumber,
-                'email_index' => strtolower($email),
-                'phone_index' => $phoneNumber,
+                'lead_id'        => '0', // will be filled below before insert
+                'added_by'       => $user->id,
+                'tenant_id'      => $tenantId,
+                'list_id'        => $leadList->id,
+                'assigned_to'    => $user->id,
+                'status'         => $status,
+                'name'           => $name,
+                'email'          => $email,
+                'phone_number'   => $phoneNumber,
+                'email_index'    => strtolower($email),
+                'phone_index'    => $phoneNumber,
                 'duplicate_hash' => hash('sha256', $tenantId . '|' . $leadList->id . '|' . $phoneNumber),
-                'data' => json_encode($data),
+                'data'           => json_encode($data),
                 'last_followup_at' => $lastFollowupAt?->format('Y-m-d H:i:s'),
                 'next_followup_at' => $nextFollowupAt?->format('Y-m-d H:i:s'),
-                'created_by' => $user->id,
-                'created_at' => $now,
-                'updated_at' => $now,
+                'created_by'     => $user->id,
+                'created_at'     => $now,
+                'updated_at'     => $now,
             ];
         }
+
+        // Resolve the next auto-increment ID so lead_id can be pre-generated
+        $nextId = (int) DB::select("SELECT AUTO_INCREMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'leads'")[0]->AUTO_INCREMENT;
+        foreach ($batch as $idx => &$row) {
+            $row['lead_id'] = 'LS' . str_pad((string) ($nextId + $idx), 6, '0', STR_PAD_LEFT);
+        }
+        unset($row);
 
         DB::table('leads')->insert($batch);
         $created += count($batch);

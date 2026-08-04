@@ -979,13 +979,13 @@
                                     style="padding:1px 7px;font-size:11px;">{{ $notes->count() }}</span>
                             @endif --}}
                         </div>
-                        <div class="lv-tab" data-tab="followup">
+                        {{-- <div class="lv-tab" data-tab="followup">
                             Followups
                             @if($followups->isNotEmpty())
                                 <span class="lv-badge lv-badge--neutral ms-1"
                                     style="padding:1px 7px;font-size:11px;">{{ $followups->count() }}</span>
                             @endif
-                        </div>
+                        </div> --}}
                         <div class="lv-tab" data-tab="activity">Activity logs</div>
                     </div>
 
@@ -1165,7 +1165,7 @@
 
 </div>
 
-                    <div class="lv-tab-panel" id="panel-followup">
+                    {{-- <div class="lv-tab-panel" id="panel-followup">
                         <div class="lv-followup-list">
                             @forelse($followups as $followup)
                                 @php
@@ -1210,7 +1210,7 @@
                                 <div class="lv-empty">No followups recorded.</div>
                             @endforelse
                         </div>
-                    </div>
+                    </div> --}}
 
                     <div class="lv-tab-panel" id="panel-activity">
                         <div class="lv-activity-list">

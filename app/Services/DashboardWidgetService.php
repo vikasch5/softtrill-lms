@@ -3,33 +3,21 @@
 namespace App\Services;
 
 use App\Models\DashboardWidget;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Query\Expression;
 class DashboardWidgetService
 {
-    /** Cache TTL in seconds (10 minutes) */
-    const CACHE_TTL = 600;
-
     public function generate(DashboardWidget $widget, ?string $period = null)
     {
-        // Cache key is busted whenever widget settings or the selected period change
-        $key = 'widget_chart_v3_' . $widget->id . '_' . ($period ?? 'default') . '_' . md5(
-            $widget->chart_type . $widget->list_id . $widget->field_id .
-            $widget->aggregate . $widget->group_by . $widget->height
-        );
-
-        return Cache::remember($key, self::CACHE_TTL, function () use ($widget, $period) {
-            switch ($widget->chart_type) {
-                case 'card':     return $this->card($widget);
-                case 'pie':      return $this->pie($widget);
-                case 'doughnut': return $this->doughnut($widget);
-                case 'bar':      return $this->bar($widget, $period);
-                case 'line':     return $this->line($widget, $period);
-                case 'area':     return $this->area($widget, $period);
-                default:         return [];
-            }
-        });
+        switch ($widget->chart_type) {
+            case 'card':     return $this->card($widget);
+            case 'pie':      return $this->pie($widget);
+            case 'doughnut': return $this->doughnut($widget);
+            case 'bar':      return $this->bar($widget, $period);
+            case 'line':     return $this->line($widget, $period);
+            case 'area':     return $this->area($widget, $period);
+            default:         return [];
+        }
     }
 
     protected function card($widget)

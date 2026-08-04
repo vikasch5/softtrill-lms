@@ -19,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Log;
 use Maatwebsite\Excel\Facades\Excel;
 
 class LeadController extends Controller
@@ -1012,12 +1013,12 @@ class LeadController extends Controller
             ->latest('id')
             ->get();
 
-        $followups = LeadFollowup::where(
-            'lead_id',
-            $lead->id
-        )
-            ->latest('id')
-            ->get();
+        // $followups = LeadFollowup::where(
+        //     'lead_id',
+        //     $lead->id
+        // )
+        //     ->latest('id')
+        //     ->get();
 
         $activities = LeadActivityLog::with('user:id,name')
             ->where(
@@ -1049,7 +1050,7 @@ class LeadController extends Controller
                 'lead',
                 'fields',
                 'leadFeedback',
-                'followups',
+                // 'followups',
                 'activities',
                 'users',
                 'feedbacks',
@@ -1552,8 +1553,8 @@ class LeadController extends Controller
         ];
 
         $humanMessage = $errorMessages[$responseBody]
-            ?? ('Dialer error: ' . $responseBody);
-
+            ?? ('Dialer error');
+        Log::info('dialer respose :', [$responseBody]);
         return response()->json([
             'success' => false,
             'message' => $humanMessage,

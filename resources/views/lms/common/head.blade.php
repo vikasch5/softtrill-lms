@@ -38,4 +38,9 @@
     <link rel="stylesheet" href="{{ asset('vendor/flasher/flasher.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/flasher/flasher.min.js') }}">
     <link rel="stylesheet" href="{{ asset('vendor/flasher/sweetalert2.min.css') }}">
+    <style>
+        .fl-wrapper {
+            z-index: 99999;
+        }
+    </style>
 </head>
