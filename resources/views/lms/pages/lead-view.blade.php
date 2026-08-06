@@ -637,6 +637,9 @@
         }
 
         .lv-edit-modal .modal-content {
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 3.5rem);
             border: 0;
             border-radius: 14px;
             overflow: hidden;
@@ -664,6 +667,9 @@
         }
 
         .lv-edit-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
             padding: 2px 22px 22px;
             background: #f8fafc;
         }
