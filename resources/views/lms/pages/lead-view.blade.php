@@ -3,14 +3,22 @@
 @section('content')
     @php
         $leadName = $lead->data['full_name'] ?? $lead->data['name'] ?? 'Lead #' . $lead->id;
-        $status = ucfirst(str_replace('_', ' ', $lead->status ?? 'new'));
+        $latestLeadFeedback = $leadFeedback->first();
+        $status = $latestLeadFeedback?->feedback?->name
+            ? ucwords(str_replace('_', ' ', $latestLeadFeedback->feedback->name))
+            : ucfirst(str_replace('_', ' ', $lead->status ?? 'new'));
         $nextFollowup = $lead->next_followup_at ? \Carbon\Carbon::parse($lead->next_followup_at) : null;
         $createdOn = $lead->created_at ? $lead->created_at->format('d M Y, h:i A') : '-';
         $assignedUser = $users->firstWhere('id', $lead->assigned_to);
         $assignedName = $assignedUser->name ?? ($lead->assigned_to ?: 'Unassigned');
-
-        
-        $statusColor = 'lv-badge--success';
+        $statusKey = \Illuminate\Support\Str::lower($status);
+        $statusColor = match (true) {
+            \Illuminate\Support\Str::contains($statusKey, ['not interested', 'invalid', 'rejected', 'lost', 'closed lost', 'drop']) => 'lv-badge--danger',
+            \Illuminate\Support\Str::contains($statusKey, ['follow up', 'pending', 'callback', 'no answer', 'busy', 'reschedule']) => 'lv-badge--warning',
+            \Illuminate\Support\Str::contains($statusKey, ['new', 'open', 'fresh', 'unassigned']) => 'lv-badge--info',
+            \Illuminate\Support\Str::contains($statusKey, ['qualified', 'interested', 'won', 'enrolled', 'closed won', 'converted']) => 'lv-badge--success',
+            default => 'lv-badge--neutral',
+        };
     @endphp
 
     <style>
@@ -45,7 +53,7 @@
         }
 
         .lv-card-head {
-            padding: 16px 20px;
+            padding: 14px 18px;
             border-bottom: 1px solid #f0f2f5;
             display: flex;
             align-items: center;
@@ -55,7 +63,7 @@
         }
 
         .lv-card-body {
-            padding: 20px;
+            padding: 18px;
         }
 
         .lv-card-body--sm {
@@ -64,7 +72,7 @@
 
         /* ── Lead header ── */
         .lv-lead-name {
-            font-size: 1.125rem;
+            font-size: 1.05rem;
             font-weight: 700;
             color: #212529;
             line-height: 1.2;
@@ -122,43 +130,47 @@
         .lv-info-grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 10px;
+            gap: 6px;
         }
 
         .lv-info-card {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 12px 14px;
+            background: linear-gradient(180deg, #fcfdff 0%, #f7f9fc 100%);
+            border: 1px solid #edf2f7;
+            border-radius: 12px;
+            padding: 9px 12px 10px;
         }
 
         .lv-info-label {
-            font-size: 11px;
-            font-weight: 600;
+            font-size: 10px;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: .04em;
-            color: #8a939d;
+            letter-spacing: .08em;
+            color: #94a3b8;
             margin-bottom: 4px;
         }
 
         .lv-info-val {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 600;
-            color: #212529;
-            word-break: break-all;
+            line-height: 1.3;
+            color: #0f172a;
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
 
         /* ── Detail grid ── */
         .lv-detail-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
-            margin-top: 16px;
+            gap: 6px;
+            margin-top: 10px;
         }
 
         .lv-detail-item {
-            border: 1px solid #f0f2f5;
-            border-radius: 10px;
-            padding: 12px 14px;
+            border: 1px solid #edf2f7;
+            background: #fff;
+            border-radius: 12px;
+            padding: 9px 12px 10px;
         }
 
         /* ── Tabs ── */
@@ -931,11 +943,16 @@
                             <div class="lv-lead-id">Lead #{{ $lead->id }} · Added {{ $createdOn }}</div>
                         </div>
                         <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <span class="lv-badge {{ $statusColor }}">
+                            <span class="lv-badge {{ $statusColor }}" id="lead-status-badge">
                                 <i class="ri-circle-fill" style="font-size:7px;"></i>
-                                {{ $status }}
+                                <span id="lead-status-text">{{ $status }}</span>
                             </span>
-                            <button type="button" class="lv-btn border-0" data-bs-toggle="modal" data-bs-target="#editLeadModal">
+                            <button type="button" class="lv-btn border-0 dialer-call" data-phone="{{ $lead->phone_number }}"
+                                data-id="{{ $lead->id }}" {{ blank($lead->phone_number) ? 'disabled' : '' }}>
+                                <i class="ri-phone-line"></i> Call lead
+                            </button>
+                            <button type="button" class="lv-btn border-0" data-bs-toggle="modal"
+                                data-bs-target="#editLeadModal">
                                 <i class="ri-edit-line"></i> Edit lead
                             </button>
                         </div>
@@ -989,239 +1006,241 @@
                         <div class="lv-tab active" data-tab="feedback">
                             Feedback
                             {{-- @if($notes->isNotEmpty())
-                                <span class="lv-badge lv-badge--neutral ms-1"
-                                    style="padding:1px 7px;font-size:11px;">{{ $notes->count() }}</span>
+                            <span class="lv-badge lv-badge--neutral ms-1" style="padding:1px 7px;font-size:11px;">{{
+                                $notes->count() }}</span>
                             @endif --}}
                         </div>
                         {{-- <div class="lv-tab" data-tab="followup">
                             Followups
                             @if($followups->isNotEmpty())
-                                <span class="lv-badge lv-badge--neutral ms-1"
-                                    style="padding:1px 7px;font-size:11px;">{{ $followups->count() }}</span>
+                            <span class="lv-badge lv-badge--neutral ms-1" style="padding:1px 7px;font-size:11px;">{{
+                                $followups->count() }}</span>
                             @endif
                         </div> --}}
                         <div class="lv-tab" data-tab="activity">Activity logs</div>
                     </div>
 
-                   <div class="lv-tab-panel active" id="panel-feedback">
+                    <div class="lv-tab-panel active" id="panel-feedback">
 
-    <div class="table-responsive">
+                        <div class="table-responsive">
 
-        <table class="table table-hover align-middle mb-0">
+                            <table class="table table-hover align-middle mb-0">
 
-            <thead class="table-light">
+                                <thead class="table-light">
 
-                <tr>
-                    <th>#</th>
-                    <th>Feedback</th>
-                    <th>Sub Feedback</th>
-                    <th>Remarks</th>
-                    <th>Followup</th>
-                    <th>Status</th>
-                    <th>Added By</th>
-                    <th>Created</th>
-                </tr>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Feedback</th>
+                                        <th>Sub Feedback</th>
+                                        <th>Remarks</th>
+                                        <th>Followup</th>
+                                        <th>Status</th>
+                                        <th>Added By</th>
+                                        <th>Created</th>
+                                    </tr>
 
-            </thead>
+                                </thead>
 
-            <tbody>
+                                <tbody>
 
-                @forelse($leadFeedback as $item)
+                                    @forelse($leadFeedback as $item)
 
-                    <tr>
+                                        <tr>
 
-                        <td>
-                            {{ $loop->iteration }}
-                        </td>
+                                            <td>
+                                                {{ $loop->iteration }}
+                                            </td>
 
-                        <td>
+                                            <td>
 
-                            <span class="badge bg-primary-subtle text-primary border">
+                                                <span class="badge bg-primary-subtle text-primary border">
 
-                                {{ $item->feedback?->name ?? '-' }}
+                                                    {{ $item->feedback?->name ?? '-' }}
 
-                            </span>
+                                                </span>
 
-                        </td>
+                                            </td>
 
-                        <td>
+                                            <td>
 
-                            @if($item->subFeedback)
+                                                @if($item->subFeedback)
 
-                                <span class="badge bg-info-subtle text-info border">
+                                                    <span class="badge bg-info-subtle text-info border">
 
-                                    {{ $item->subFeedback->name }}
+                                                        {{ $item->subFeedback->name }}
 
-                                </span>
+                                                    </span>
 
-                            @else
+                                                @else
 
-                                <span class="text-muted">-</span>
+                                                    <span class="text-muted">-</span>
 
-                            @endif
+                                                @endif
 
-                        </td>
+                                            </td>
 
-                        <td style="max-width:250px">
+                                            <td style="max-width:250px">
 
-                            @if($item->remarks)
+                                                @if($item->remarks)
 
-                                {{ $item->remarks }}
+                                                    {{ $item->remarks }}
 
-                            @else
+                                                @else
 
-                                <span class="text-muted">
-                                    No remarks
-                                </span>
+                                                    <span class="text-muted">
+                                                        No remarks
+                                                    </span>
 
-                            @endif
+                                                @endif
 
-                        </td>
+                                            </td>
 
-                        <td>
+                                            <td>
 
-                            @if($item->followup_date)
+                                                @if($item->followup_date)
 
-                                <div class="small">
+                                                    <div class="small">
 
-                                    {{ \Carbon\Carbon::parse($item->followup_date)->format('d M Y') }}
+                                                        {{ \Carbon\Carbon::parse($item->followup_date)->format('d M Y') }}
 
-                                    <br>
+                                                        <br>
 
-                                    <span class="text-muted">
+                                                        <span class="text-muted">
 
-                                        {{ \Carbon\Carbon::parse($item->followup_date)->format('h:i A') }}
+                                                            {{ \Carbon\Carbon::parse($item->followup_date)->format('h:i A') }}
 
-                                    </span>
+                                                        </span>
 
-                                </div>
+                                                    </div>
 
-                            @else
+                                                @else
 
-                                <span class="text-muted">-</span>
+                                                    <span class="text-muted">-</span>
 
-                            @endif
+                                                @endif
 
-                        </td>
+                                            </td>
 
-                        <td>
+                                            <td>
 
-                            @php
+                                                @php
 
-                                $statusClass = match($item->status) {
-                                    'completed' => 'success',
-                                    'pending' => 'warning',
-                                    'cancelled' => 'danger',
-                                    default => 'secondary'
-                                };
+                                                    $statusClass = match ($item->status) {
+                                                        'completed' => 'success',
+                                                        'pending' => 'warning',
+                                                        'cancelled' => 'danger',
+                                                        default => 'secondary'
+                                                    };
 
-                            @endphp
+                                                @endphp
 
-                            <span class="badge bg-{{ $statusClass }}">
+                                                <span class="badge bg-{{ $statusClass }}">
 
-                                {{ ucfirst($item->status) }}
+                                                    {{ ucfirst($item->status) }}
 
-                            </span>
+                                                </span>
 
-                        </td>
+                                            </td>
 
-                        <td>
+                                            <td>
 
-                            {{ $item->user?->name ?? '-' }}
+                                                {{ $item->user?->name ?? '-' }}
 
-                        </td>
+                                            </td>
 
-                        <td>
+                                            <td>
 
-                            <div class="small">
+                                                <div class="small">
 
-                                {{ $item->created_at->format('d M Y') }}
+                                                    {{ $item->created_at->format('d M Y') }}
 
-                                <br>
+                                                    <br>
 
-                                <span class="text-muted">
+                                                    <span class="text-muted">
 
-                                    {{ $item->created_at->format('h:i A') }}
+                                                        {{ $item->created_at->format('h:i A') }}
 
-                                </span>
+                                                    </span>
 
-                            </div>
+                                                </div>
 
-                        </td>
+                                            </td>
 
-                    </tr>
+                                        </tr>
 
-                @empty
+                                    @empty
 
-                    <tr>
+                                        <tr>
 
-                        <td colspan="8" class="text-center py-5">
+                                            <td colspan="8" class="text-center py-5">
 
-                            <div class="text-muted">
+                                                <div class="text-muted">
 
-                                <i class="ri-chat-history-line fs-2 d-block mb-2"></i>
+                                                    <i class="ri-chat-history-line fs-2 d-block mb-2"></i>
 
-                                No feedback history found
+                                                    No feedback history found
 
-                            </div>
+                                                </div>
 
-                        </td>
+                                            </td>
 
-                    </tr>
+                                        </tr>
 
-                @endforelse
+                                    @endforelse
 
-            </tbody>
+                                </tbody>
 
-        </table>
+                            </table>
 
-    </div>
+                        </div>
 
-</div>
+                    </div>
 
                     {{-- <div class="lv-tab-panel" id="panel-followup">
                         <div class="lv-followup-list">
                             @forelse($followups as $followup)
-                                @php
-                                    $followupAt = $followup->followup_at ? \Carbon\Carbon::parse($followup->followup_at) : null;
-                                    $followupStatus = $followupAt && $followupAt->isPast() ? 'Completed / Past' : 'Upcoming';
-                                @endphp
-                                <div class="lv-followup-item">
-                                    <div class="lv-followup-head">
-                                        <div class="lv-followup-title">
-                                            <span class="lv-followup-icon">
-                                                <i class="ri-calendar-schedule-line"></i>
-                                            </span>
-                                            <div>
-                                                <p class="lv-followup-name mb-0">Followup scheduled</p>
-                                                <div class="lv-followup-sub">
-                                                    {{ $followupAt ? $followupAt->format('l, d M Y') : 'Followup date not set' }}
-                                                </div>
+                            @php
+                            $followupAt = $followup->followup_at ? \Carbon\Carbon::parse($followup->followup_at) : null;
+                            $followupStatus = $followupAt && $followupAt->isPast() ? 'Completed / Past' : 'Upcoming';
+                            @endphp
+                            <div class="lv-followup-item">
+                                <div class="lv-followup-head">
+                                    <div class="lv-followup-title">
+                                        <span class="lv-followup-icon">
+                                            <i class="ri-calendar-schedule-line"></i>
+                                        </span>
+                                        <div>
+                                            <p class="lv-followup-name mb-0">Followup scheduled</p>
+                                            <div class="lv-followup-sub">
+                                                {{ $followupAt ? $followupAt->format('l, d M Y') : 'Followup date not set'
+                                                }}
                                             </div>
                                         </div>
-                                        <div class="lv-followup-time">
-                                            {{ $followupAt ? $followupAt->format('h:i A') : '--:--' }}
-                                        </div>
                                     </div>
-
-                                    <div class="lv-followup-tags">
-                                        <span class="lv-followup-tag">
-                                            <i class="ri-time-line"></i> {{ $followupStatus }}
-                                        </span>
-                                        @if($followupAt)
-                                            <span class="lv-followup-tag">
-                                                <i class="ri-calendar-check-line"></i> {{ $followupAt->format('d M Y, h:i A') }}
-                                            </span>
-                                        @endif
-                                    </div>
-
-                                    <div class="lv-followup-note">
-                                        <div class="lv-followup-note-label">Remarks</div>
-                                        <div class="lv-followup-note-text">{{ $followup->remarks ?: 'No remarks added for this followup.' }}</div>
+                                    <div class="lv-followup-time">
+                                        {{ $followupAt ? $followupAt->format('h:i A') : '--:--' }}
                                     </div>
                                 </div>
+
+                                <div class="lv-followup-tags">
+                                    <span class="lv-followup-tag">
+                                        <i class="ri-time-line"></i> {{ $followupStatus }}
+                                    </span>
+                                    @if($followupAt)
+                                    <span class="lv-followup-tag">
+                                        <i class="ri-calendar-check-line"></i> {{ $followupAt->format('d M Y, h:i A') }}
+                                    </span>
+                                    @endif
+                                </div>
+
+                                <div class="lv-followup-note">
+                                    <div class="lv-followup-note-label">Remarks</div>
+                                    <div class="lv-followup-note-text">{{ $followup->remarks ?: 'No remarks added for this
+                                        followup.' }}</div>
+                                </div>
+                            </div>
                             @empty
-                                <div class="lv-empty">No followups recorded.</div>
+                            <div class="lv-empty">No followups recorded.</div>
                             @endforelse
                         </div>
                     </div> --}}
@@ -1348,7 +1367,8 @@
                         <span class="lv-card-head-title">Quick update</span>
                     </div>
                     <div class="lv-card-body--sm lv-card-body">
-                        <form action="{{ route('lms.leads.quick-update', $lead->id) }}" method="POST" class="ajaxForm" data-notify-type="toaster">
+                        <form action="{{ route('lms.leads.quick-update', $lead->id) }}" method="POST" class="ajaxForm"
+                            data-notify-type="toaster" id="lead-quick-update-form">
                             @csrf
                             <input type="hidden" name="lead_id" value="{{ $lead->id }}">
                             <input type="hidden" name="source" value="{{ request('source') }}">
@@ -1358,7 +1378,7 @@
                                 <select name="feedback_id" id="lv-feedback" class="lv-finput required">
                                     <option value="">— Select feedback —</option>
                                     @foreach($feedbacks as $feedback)
-                                        <option value="{{ $feedback->id }}" {{ $lead->status === $feedback->id ? 'selected' : '' }}>
+                                        <option value="{{ $feedback->id }}" {{ (string) optional($latestLeadFeedback)->feedback_id === (string) $feedback->id ? 'selected' : '' }}>
                                             {{ ucfirst(str_replace('_', ' ', $feedback->name)) }}
                                         </option>
                                     @endforeach
@@ -1399,11 +1419,11 @@
                         </form>
 
                         @if(request('source') === 'dialer')
-                        <div class="mt-3" id="dialer-disconnect-wrap">
-                            <button type="button" id="btn-dialer-disconnect" class="lv-btn-danger w-100">
-                                <i class="ri-phone-off-line"></i> Disconnect Call
-                            </button>
-                        </div>
+                            <div class="mt-3" id="dialer-disconnect-wrap">
+                                <button type="button" id="btn-dialer-disconnect" class="lv-btn-danger w-100">
+                                    <i class="ri-phone-off-line"></i> Disconnect Call
+                                </button>
+                            </div>
                         @endif
                     </div>
                 </div>
@@ -1411,7 +1431,8 @@
         </div>
     </div>
 
-    <div class="modal fade lv-edit-modal" id="editLeadModal" tabindex="-1" aria-labelledby="editLeadModalLabel" aria-hidden="true">
+    <div class="modal fade lv-edit-modal" id="editLeadModal" tabindex="-1" aria-labelledby="editLeadModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="lv-edit-head d-flex justify-content-between align-items-start gap-3">
@@ -1447,14 +1468,16 @@
                                     <div class="col-md-4">
                                         <div class="lv-edit-field">
                                             <label class="lv-edit-label">Phone Number</label>
-                                            <input type="text" name="phone_number" value="{{ $lead->phone_number }}" class="lv-edit-input">
+                                            <input type="text" name="phone_number" value="{{ $lead->phone_number }}"
+                                                class="lv-edit-input">
                                         </div>
                                     </div>
 
                                     <div class="col-md-4">
                                         <div class="lv-edit-field">
                                             <label class="lv-edit-label">Email</label>
-                                            <input type="text" name="email" value="{{ $lead->email }}" class="lv-edit-input">
+                                            <input type="text" name="email" value="{{ $lead->email }}"
+                                                class="lv-edit-input">
                                         </div>
                                     </div>
                                 </div>
@@ -1490,11 +1513,11 @@
                                                     @if(in_array($field->type, ['text', 'email', 'phone', 'number', 'decimal', 'date', 'datetime'], true))
                                                         <input
                                                             type="{{ $field->type === 'phone' ? 'text' : ($field->type === 'datetime' ? 'datetime-local' : $field->type) }}"
-                                                            name="data[{{ $field->slug }}]"
-                                                            value="{{ $inputValue }}"
+                                                            name="data[{{ $field->slug }}]" value="{{ $inputValue }}"
                                                             class="lv-edit-input">
                                                     @elseif($field->type === 'textarea')
-                                                        <textarea name="data[{{ $field->slug }}]" class="lv-edit-input" rows="3">{{ $inputValue }}</textarea>
+                                                        <textarea name="data[{{ $field->slug }}]" class="lv-edit-input"
+                                                            rows="3">{{ $inputValue }}</textarea>
                                                     @elseif($field->type === 'select')
                                                         <select name="data[{{ $field->slug }}]" class="lv-edit-input">
                                                             <option value="">Select</option>
@@ -1508,8 +1531,8 @@
                                                         <div class="lv-edit-choice-box">
                                                             @foreach($options as $option)
                                                                 <div class="form-check">
-                                                                    <input class="form-check-input" type="radio" name="data[{{ $field->slug }}]"
-                                                                        value="{{ $option }}" {{ $value == $option ? 'checked' : '' }}>
+                                                                    <input class="form-check-input" type="radio"
+                                                                        name="data[{{ $field->slug }}]" value="{{ $option }}" {{ $value == $option ? 'checked' : '' }}>
                                                                     <label class="form-check-label">{{ $option }}</label>
                                                                 </div>
                                                             @endforeach
@@ -1522,8 +1545,8 @@
                                                         <div class="lv-edit-choice-box">
                                                             @foreach($options as $option)
                                                                 <div class="form-check">
-                                                                    <input class="form-check-input" type="checkbox" name="data[{{ $field->slug }}][]"
-                                                                        value="{{ $option }}" {{ in_array($option, $selected, true) ? 'checked' : '' }}>
+                                                                    <input class="form-check-input" type="checkbox"
+                                                                        name="data[{{ $field->slug }}][]" value="{{ $option }}" {{ in_array($option, $selected, true) ? 'checked' : '' }}>
                                                                     <label class="form-check-label">{{ $option }}</label>
                                                                 </div>
                                                             @endforeach
@@ -1550,7 +1573,7 @@
                         <div class="lv-edit-actions">
                             <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
                             <button type="submit" class="btn btn-dark">
-                            <i class="ri-save-line"></i> Update Lead
+                                <i class="ri-save-line"></i> Update Lead
                             </button>
                         </div>
                     </div>
@@ -1581,115 +1604,195 @@
             });
         }
     </script>
-   
+
 @endsection
 
 @section('scripts')
- <script>
-$(document).ready(function() {
+    <script>
+        $(document).ready(function () {
+            const quickUpdateAction = @json(route('lms.leads.quick-update', $lead->id));
 
-    $('#lv-feedback').on('change', function() {
+            function updateLeadStatusBadge() {
+                const $statusBadge = $('#lead-status-badge');
+                const $statusText = $('#lead-status-text');
+                const $feedback = $('#lv-feedback');
+                const feedbackText = $feedback.find('option:selected').text().trim().replace(/^—\s*|\s*—$/g, '');
 
-        let feedbackId = $(this).val();
+                if (!$statusBadge.length || !$statusText.length || !$feedback.val() || !feedbackText) {
+                    return;
+                }
 
-        $('#lv-sub-feedback').html(
-            '<option value="">Loading...</option>'
-        );
+                $statusText.text(feedbackText);
 
-        if (!feedbackId) {
+                const statusKey = feedbackText.toLowerCase();
+                let badgeClass = 'lv-badge--neutral';
 
-            $('#lv-sub-feedback').html(
-                '<option value="">— Select sub feedback —</option>'
-            );
+                if (['not interested', 'invalid', 'rejected', 'lost', 'closed lost', 'drop'].some(keyword => statusKey.includes(keyword))) {
+                    badgeClass = 'lv-badge--danger';
+                } else if (['follow up', 'pending', 'callback', 'no answer', 'busy', 'reschedule'].some(keyword => statusKey.includes(keyword))) {
+                    badgeClass = 'lv-badge--warning';
+                } else if (['new', 'open', 'fresh', 'unassigned'].some(keyword => statusKey.includes(keyword))) {
+                    badgeClass = 'lv-badge--info';
+                } else if (['qualified', 'interested', 'won', 'enrolled', 'closed won', 'converted'].some(keyword => statusKey.includes(keyword))) {
+                    badgeClass = 'lv-badge--success';
+                }
 
-            return;
-        }
+                $statusBadge.removeClass('lv-badge--neutral lv-badge--info lv-badge--warning lv-badge--success lv-badge--danger')
+                    .addClass(badgeClass);
+            }
 
-        $.ajax({
-            url: '/feedbacks/sub-feedbacks/' + feedbackId,
-            type: 'GET',
-            success: function(response) {
+            $('#lv-feedback').on('change', function () {
 
-                let options =
-                    '<option value="">— Select sub feedback —</option>';
-
-                $.each(response, function(index, item) {
-
-                    options += `
-                        <option value="${item.id}">
-                            ${item.name}
-                        </option>
-                    `;
-                });
-
-                $('#lv-sub-feedback').html(options);
-            },
-            error: function() {
+                let feedbackId = $(this).val();
 
                 $('#lv-sub-feedback').html(
-                    '<option value="">No sub feedback found</option>'
+                    '<option value="">Loading...</option>'
                 );
-            }
-        });
-    });
 
-    // ── Dialer: Disconnect Call button ───────────────────────────────────────
-    $('#btn-dialer-disconnect').on('click', function () {
-        triggerDialerHangup();
-    });
+                if (!feedbackId) {
 
-    function triggerDialerHangup() {
-        const $btn = $('#btn-dialer-disconnect');
-        if (!$btn.length) return;
+                    $('#lv-sub-feedback').html(
+                        '<option value="">— Select sub feedback —</option>'
+                    );
 
-        $btn.prop('disabled', true)
-            .html('<span class="spinner-border spinner-border-sm me-1" role="status"></span> Disconnecting...');
-
-        $.ajax({
-            url    : '{{ route('lms.dialer.hangup') }}',
-            method : 'POST',
-            data   : { _token: '{{ csrf_token() }}' },
-            success: function (response) {
-                if (response.success) {
-                    notify_it('success', 'Call disconnected successfully.','','toast');
-                    $btn.closest('#dialer-disconnect-wrap').fadeOut(400);
-
-                    // After 2 seconds, fire external_status then close window
-                    setTimeout(function () {
-                        $.ajax({
-                            url    : '{{ route('lms.dialer.status') }}',
-                            method : 'POST',
-                            data   : { _token: '{{ csrf_token() }}' },
-                            success: function (statusResponse) {
-                                if (!statusResponse.success) {
-                                    console.warn('Dialer status update failed:', statusResponse.message);
-                                }
-                            },
-                            error: function (xhr) {
-                                console.error('Dialer status error:', xhr.responseJSON?.message);
-                            },
-                            complete: function () {
-                                window.close();
-                            }
-                        });
-                    }, 2000);
-
-                } else {
-                    notify_it('error', response.message || 'Hangup failed.','','toast');
-                    $btn.prop('disabled', false)
-                        .html('<i class="ri-phone-off-line"></i> Disconnect Call');
+                    return;
                 }
-            },
-            error: function (xhr) {
-                const msg = 'An unexpected error occurred.';
-                notify_it('error', msg,'','toast');
-                $btn.prop('disabled', false)
-                    .html('<i class="ri-phone-off-line"></i> Disconnect Call');
-            }
-        });
-    }
-    // ─────────────────────────────────────────────────────────────────────────
 
-});
-</script>
+                $.ajax({
+                    url: '/feedbacks/sub-feedbacks/' + feedbackId,
+                    type: 'GET',
+                    success: function (response) {
+
+                        let options =
+                            '<option value="">— Select sub feedback —</option>';
+
+                        $.each(response, function (index, item) {
+
+                            options += `
+                            <option value="${item.id}">
+                                ${item.name}
+                            </option>
+                        `;
+                        });
+
+                        $('#lv-sub-feedback').html(options);
+                    },
+                    error: function () {
+
+                        $('#lv-sub-feedback').html(
+                            '<option value="">No sub feedback found</option>'
+                        );
+                    }
+                });
+            });
+
+            // ── Dialer: Disconnect Call button ───────────────────────────────────────
+            $(document).ajaxSuccess(function (event, xhr, settings) {
+                if (settings.url === quickUpdateAction && xhr.responseJSON?.success) {
+                    updateLeadStatusBadge();
+                }
+            });
+
+            $(document).on('click', '.dialer-call', function (e) {
+                e.preventDefault();
+
+                const $btn = $(this);
+                const phone = $btn.data('phone');
+                const originalHtml = $btn.html();
+
+                if (!phone) {
+                    notify_it('error', 'No phone number found for this lead.', '', 'toast');
+                    return;
+                }
+
+                $btn.prop('disabled', true)
+                    .html('<span class="spinner-border spinner-border-sm me-1" role="status"></span> Calling...');
+
+                $.ajax({
+                    url: '{{ route('lms.dialer.call') }}',
+                    method: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        phone: phone,
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            notify_it('success', 'Call initiated successfully for ' + phone, '', 'toast');
+                        } else {
+                            notify_it('error', response.message || 'Dialer call failed.', '', 'toast');
+                        }
+                    },
+                    error: function (xhr) {
+                        let message = 'An unexpected error occurred while initiating the call.';
+
+                        if (xhr.responseJSON?.message) {
+                            message = xhr.responseJSON.message;
+                        }
+
+                        notify_it('error', message, '', 'toast');
+                    },
+                    complete: function () {
+                        $btn.prop('disabled', false).html(originalHtml);
+                    }
+                });
+            });
+
+            $('#btn-dialer-disconnect').on('click', function () {
+                triggerDialerHangup();
+            });
+
+            function triggerDialerHangup() {
+                const $btn = $('#btn-dialer-disconnect');
+                if (!$btn.length) return;
+
+                $btn.prop('disabled', true)
+                    .html('<span class="spinner-border spinner-border-sm me-1" role="status"></span> Disconnecting...');
+
+                $.ajax({
+                    url: '{{ route('lms.dialer.hangup') }}',
+                    method: 'POST',
+                    data: {_token: '{{ csrf_token() }}'},
+                    success: function (response) {
+                        if (response.success) {
+                            notify_it('success', 'Call disconnected successfully.', '', 'toast');
+                            $btn.closest('#dialer-disconnect-wrap').fadeOut(400);
+
+                            // After 2 seconds, fire external_status then close window
+                            setTimeout(function () {
+                                $.ajax({
+                                    url: '{{ route('lms.dialer.status') }}',
+                                    method: 'POST',
+                                    data: {_token: '{{ csrf_token() }}'},
+                                    success: function (statusResponse) {
+                                        if (!statusResponse.success) {
+                                            console.warn('Dialer status update failed:', statusResponse.message);
+                                        }
+                                    },
+                                    error: function (xhr) {
+                                        console.error('Dialer status error:', xhr.responseJSON?.message);
+                                    },
+                                    complete: function () {
+                                        window.close();
+                                    }
+                                });
+                            }, 2000);
+
+                        } else {
+                            notify_it('error', response.message || 'Hangup failed.', '', 'toast');
+                            $btn.prop('disabled', false)
+                                .html('<i class="ri-phone-off-line"></i> Disconnect Call');
+                        }
+                    },
+                    error: function (xhr) {
+                        const msg = 'An unexpected error occurred.';
+                        notify_it('error', msg, '', 'toast');
+                        $btn.prop('disabled', false)
+                            .html('<i class="ri-phone-off-line"></i> Disconnect Call');
+                    }
+                });
+            }
+            // ─────────────────────────────────────────────────────────────────────────
+
+        });
+    </script>
 @endsection
