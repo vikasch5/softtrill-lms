@@ -646,6 +646,14 @@
             box-shadow: 0 18px 60px rgba(15, 23, 42, .18);
         }
 
+        .lv-edit-modal form.ajaxForm {
+            display: flex;
+            flex: 1 1 auto;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+        }
+
         .lv-edit-head {
             padding: 18px 22px;
             border-bottom: 1px solid #edf0f3;
