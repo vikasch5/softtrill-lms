@@ -1487,7 +1487,8 @@ class LeadController extends Controller
         ]);
 
         $phone = $request->input('phone');
-        $agentId = auth()->id();
+        $agentId = UserDetails::where('user_id', auth()->id())
+            ->value('employee_id');
 
         $serverIp = gethostbyname(gethostname());
         // Hard-coded server IP (or swap back to gethostbyname(gethostname()) for auto-resolve)
@@ -1568,7 +1569,8 @@ class LeadController extends Controller
      */
     public function dialerHangup(Request $request)
     {
-        $agentId = auth()->id();
+        $agentId = UserDetails::where('user_id', auth()->id())
+            ->value('employee_id');
         $serverIp = gethostbyname(gethostname());
 
         $params = http_build_query([
