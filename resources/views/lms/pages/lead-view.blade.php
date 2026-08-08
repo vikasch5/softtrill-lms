@@ -933,6 +933,18 @@
         <div class="lv-page">
 
             {{-- ════ LEFT COLUMN ════ --}}
+            @php
+                $userRole = auth()->user()->getRoleNames()->first();
+                $canViewUnmaskedMobile = $privacyService->canRole($userRole, 'unmasked_mobile');
+                $displayMobile = $canViewUnmaskedMobile 
+                    ? $lead->phone_number 
+                    : $privacyService->maskMobile($lead->phone_number, $privacySettings['mobile']);
+                    
+                $canViewUnmaskedEmail = $privacyService->canRole($userRole, 'unmasked_email');
+                $displayEmail = $canViewUnmaskedEmail 
+                    ? $lead->email 
+                    : $privacyService->maskEmail($lead->email, $privacySettings['email']);
+            @endphp
             <div class="lv-left">
 
                 {{-- Lead header card --}}
@@ -947,7 +959,7 @@
                                 <i class="ri-circle-fill" style="font-size:7px;"></i>
                                 <span id="lead-status-text">{{ $status }}</span>
                             </span>
-                            <button type="button" class="lv-btn border-0 dialer-call" data-phone="{{ $lead->phone_number }}"
+                            <button type="button" class="lv-btn border-0 dialer-call" data-phone="{{ $displayMobile }}"
                                 data-id="{{ $lead->id }}" {{ blank($lead->phone_number) ? 'disabled' : '' }}>
                                 <i class="ri-phone-line"></i> Call lead
                             </button>
@@ -962,11 +974,11 @@
                         <div class="lv-info-grid">
                             <div class="lv-info-card">
                                 <div class="lv-info-label">Email</div>
-                                <div class="lv-info-val">{{ $lead->email ?: '—' }}</div>
+                                <div class="lv-info-val">{{ $displayEmail ?: '—' }}</div>
                             </div>
                             <div class="lv-info-card">
                                 <div class="lv-info-label">Phone</div>
-                                <div class="lv-info-val">{{ $lead->phone_number ?: '—' }}</div>
+                                <div class="lv-info-val">{{ $displayMobile ?: '—' }}</div>
                             </div>
                             <div class="lv-info-card">
                                 <div class="lv-info-label">Assigned to</div>
@@ -1468,16 +1480,16 @@
                                     <div class="col-md-4">
                                         <div class="lv-edit-field">
                                             <label class="lv-edit-label">Phone Number</label>
-                                            <input type="text" name="phone_number" value="{{ $lead->phone_number }}"
-                                                class="lv-edit-input">
+                                            <input type="text" name="phone_number" value="{{ $displayMobile }}"
+                                                class="lv-edit-input" {{ !$canViewUnmaskedMobile ? 'disabled' : '' }}>
                                         </div>
                                     </div>
 
                                     <div class="col-md-4">
                                         <div class="lv-edit-field">
                                             <label class="lv-edit-label">Email</label>
-                                            <input type="text" name="email" value="{{ $lead->email }}"
-                                                class="lv-edit-input">
+                                            <input type="text" name="email" value="{{ $displayEmail }}"
+                                                class="lv-edit-input" {{ !$canViewUnmaskedEmail ? 'disabled' : '' }}>
                                         </div>
                                     </div>
                                 </div>

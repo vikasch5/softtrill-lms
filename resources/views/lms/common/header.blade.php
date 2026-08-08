@@ -244,7 +244,8 @@
                 @if(($isDialerLeadView ?? false))
                     <div>
                         <a href="{{ route('lms.dashboard') }}" class="sidebar-logo d-flex justify-content-center">
-                            <img src="{{ asset('lms/images/logo.png') }}" alt="site logo" class="light-logo d-flex justify-content-center">
+                            <img src="{{ asset('lms/images/logo.png') }}" alt="site logo"
+                                class="light-logo d-flex justify-content-center">
                         </a>
                     </div>
                 @endif
@@ -260,27 +261,36 @@
         </div>
         <div class="header-toolbar-center">
             <div class="header-followups">
-                <div class="header-followup-card today">
-                    <div class="header-followup-content">
-                        <div class="header-followup-label">Today Followups <span
-                                class="header-followup-separator">:</span></div>
-                        <div class="header-followup-value">{{ $headerFollowupStats['today'] ?? 0 }}</div>
+                <a href="{{ route('lms.leads', ['followup_status' => 'today']) }}"
+                    style="text-decoration: none; color: inherit;">
+                    <div class="header-followup-card today">
+                        <div class="header-followup-content">
+                            <div class="header-followup-label">Today Followups <span
+                                    class="header-followup-separator">:</span></div>
+                            <div class="header-followup-value">{{ $headerFollowupStats['today'] ?? 0 }}</div>
+                        </div>
                     </div>
-                </div>
-                <div class="header-followup-card pending">
-                    <div class="header-followup-content">
-                        <div class="header-followup-label">Pending Followups <span
-                                class="header-followup-separator">:</span></div>
-                        <div class="header-followup-value">{{ $headerFollowupStats['pending'] ?? 0 }}</div>
+                </a>
+                <a href="{{ route('lms.leads', ['followup_status' => 'pending']) }}"
+                    style="text-decoration: none; color: inherit;">
+                    <div class="header-followup-card pending">
+                        <div class="header-followup-content">
+                            <div class="header-followup-label">Pending Followups <span
+                                    class="header-followup-separator">:</span></div>
+                            <div class="header-followup-value">{{ $headerFollowupStats['pending'] ?? 0 }}</div>
+                        </div>
                     </div>
-                </div>
-                <div class="header-followup-card upcoming">
-                    <div class="header-followup-content">
-                        <div class="header-followup-label">Upcoming Followups <span
-                                class="header-followup-separator">:</span></div>
-                        <div class="header-followup-value">{{ $headerFollowupStats['upcoming'] ?? 0 }}</div>
+                </a>
+                <a href="{{ route('lms.leads', ['followup_status' => 'upcoming']) }}"
+                    style="text-decoration: none; color: inherit;">
+                    <div class="header-followup-card upcoming">
+                        <div class="header-followup-content">
+                            <div class="header-followup-label">Upcoming Followups <span
+                                    class="header-followup-separator">:</span></div>
+                            <div class="header-followup-value">{{ $headerFollowupStats['upcoming'] ?? 0 }}</div>
+                        </div>
                     </div>
-                </div>
+                </a>
             </div>
         </div>
         <div class="header-toolbar-end">

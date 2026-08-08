@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Lead extends Model
 {
@@ -25,8 +27,11 @@ class Lead extends Model
         'next_followup_at',
         'created_by'
     ];
+
     protected $casts = [
         'data' => 'array',
+        'last_followup_at' => 'datetime',
+        'next_followup_at' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -53,5 +58,17 @@ class Lead extends Model
     public function assignedTo()
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function leadFeedback()
+    {
+        return $this->hasOne(LeadFeedback::class, 'lead_id')->latestOfMany('id');
+    }
+
+    protected function nextFollowupFormatted(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->next_followup_at?->format('d M Y h:i A') ?? 'N/A'
+        );
     }
 }

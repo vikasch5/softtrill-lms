@@ -219,9 +219,9 @@
                             <tr>
                                 <th><input type="checkbox" class="form-check-input" id="select-all"></th>
                                 <th>#</th>
-                                <th>Lead Info</th>
-                                {{-- <th>List</th> --}}
-                                <th>Status</th>
+                                <th>Name</th>
+                                <th>Feedback</th>
+                                <th>Followup Date</th>
                                 <th>Assigned To</th>
                                 <th>Call</th>
                                 <th>Created</th>
@@ -242,28 +242,29 @@
                                     </td>
 
                                     <td>
-
-                                        <div>
-
-                                            <div class="fw-semibold">
-
-                                                {{ $lead->name }}
-
-                                            </div>
-                                            <div class="fw-semibold">
-                                                {{ $lead->phone_number }}
-
-                                            </div>
-
-                                            <small class="text-muted">
-                                                {{ $lead->email }}
-
-                                            </small>
-
-
-
+                                        <div class="fw-semibold">
+                                            {{ $lead->name }}
+                                            
                                         </div>
-
+                                        <div class="fw-semibold">
+                                            @php
+                                                $userRole = auth()->user()->getRoleNames()->first();
+                                                $canViewUnmasked = $privacyService->canRole($userRole, 'unmasked_mobile');
+                                                $displayMobile = $canViewUnmasked 
+                                                    ? $lead->phone_number 
+                                                    : $privacyService->maskMobile($lead->phone_number, $privacySettings['mobile']);
+                                            @endphp
+                                            {{ $displayMobile }}
+                                        </div>
+                                        <span class="text-muted">
+                                            @php
+                                                $canViewUnmaskedEmail = $privacyService->canRole($userRole, 'unmasked_email');
+                                                $displayEmail = $canViewUnmaskedEmail 
+                                                    ? $lead->email 
+                                                    : $privacyService->maskEmail($lead->email, $privacySettings['email']);
+                                            @endphp
+                                            {{ $displayEmail }}
+                                        </span>
                                     </td>
 
                                     {{-- <td>
@@ -276,10 +277,27 @@
 
                                         <span class="badge bg-primary">
 
-                                            {{ ucfirst($lead->status) }}
+                                            {{ ucfirst($lead->leadFeedback?->feedback?->name ?? 'N/A') }}
 
                                         </span>
 
+                                    </td>
+                                     <td>
+@php
+    $followupDate = $lead->next_followup_at;
+
+    $badgeClass = match (true) {
+        !$followupDate => 'bg-secondary',
+        $followupDate->isPast() && !$followupDate->isToday() => 'bg-danger',
+        $followupDate->isToday() => 'bg-warning text-dark',
+        $followupDate->isFuture() => 'bg-success',
+        default => 'bg-secondary',
+    };
+@endphp
+
+<span class="badge {{ $badgeClass }}">
+    {{ $lead->next_followup_formatted }}
+</span>
                                     </td>
 
                                     <td>
@@ -288,7 +306,7 @@
 
                                     </td>
 
-                                    <td><a href="#" class="btn btn-success dialer-call" data-phone="{{ $lead->phone_number }}" data-id="{{ $lead->id }}"><i class="ri-phone-line"></i></a></td>
+                                    <td><a href="#" class="btn btn-success dialer-call" data-id="{{ $lead->id }}"><i class="ri-phone-line"></i></a></td>
 
 
                                     <td>
@@ -327,7 +345,7 @@
 
                                 <tr>
 
-                                    <td colspan="9" class="text-center py-5">
+                                    <td colspan="10" class="text-center py-5">
 
                                         No Leads Found
 
@@ -657,10 +675,10 @@
             e.preventDefault();
 
             const $btn   = $(this);
-            const phone  = $btn.data('phone');
+            const leadId = $btn.data('id');
 
-            if (!phone) {
-                notify_it('error', 'No phone number found for this lead.');
+            if (!leadId) {
+                notify_it('error', 'No lead ID found.');
                 return;
             }
 
@@ -673,11 +691,11 @@
                 method : 'POST',
                 data   : {
                     _token : '{{ csrf_token() }}',
-                    phone  : phone,
+                    lead_id: leadId,
                 },
                 success: function (response) {
                     if (response.success) {
-                        notify_it('success', 'Call initiated successfully for ' + phone);
+                        notify_it('success', 'Call initiated successfully.');
                     } else {
                         notify_it('error', response.message || 'Dialer call failed.');
                     }

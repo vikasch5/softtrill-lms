@@ -40,10 +40,11 @@ class LeadController extends Controller
                 'name',
                 'phone_number',
                 'email',
+                'next_followup_at',
                 'created_at',
                 'added_by',
             ])
-            ->with(['list', 'assignedTo']);
+            ->with(['list', 'assignedTo','leadFeedback.feedback']);
 
         // Admin sees everything, others see leads within their hierarchy
         if (!$user->hasRole('Admin')) {
@@ -72,6 +73,17 @@ class LeadController extends Controller
 
         if ($request->filled('email')) {
             $query->where('email', 'like', '%' . trim($request->email) . '%');
+        }
+
+        if ($request->filled('followup_status')) {
+            $today = \Carbon\Carbon::today();
+            if ($request->followup_status === 'today') {
+                $query->whereDate('next_followup_at', $today);
+            } elseif ($request->followup_status === 'pending') {
+                $query->where('next_followup_at', '<', $today->copy()->startOfDay());
+            } elseif ($request->followup_status === 'upcoming') {
+                $query->where('next_followup_at', '>', $today->copy()->endOfDay());
+            }
         }
 
         $filterableFields = LeadField::query()
@@ -140,9 +152,12 @@ class LeadController extends Controller
 
         $assignmentRoles = $this->getAssignableRoles($user);
 
+        $privacyService = app(\App\Services\PrivacyService::class);
+        $privacySettings = $privacyService->getAll();
+
         return view(
             'lms.pages.leads-list',
-            compact('leads', 'lists', 'filterableFields', 'assignmentRoles')
+            compact('leads', 'lists', 'filterableFields', 'assignmentRoles', 'privacyService', 'privacySettings')
         );
     }
 
@@ -965,17 +980,24 @@ class LeadController extends Controller
         $lead = Lead::findOrFail($id);
 
         $leadData = $request->input('data', []);
-        $email = $request->filled('email') ? strtolower(trim($request->email)) : null;
-        $phone = preg_replace('/\D/', '', (string) $request->phone_number);
-
-        $lead->update([
+        $dataToUpdate = [
             'name' => $request->name,
-            'email' => $email,
-            'phone_number' => $phone,
             'data' => $leadData,
-            'email_index' => $email,
-            'phone_index' => $phone,
-        ]);
+        ];
+
+        if ($request->has('email')) {
+            $email = $request->filled('email') ? strtolower(trim($request->email)) : null;
+            $dataToUpdate['email'] = $email;
+            $dataToUpdate['email_index'] = $email;
+        }
+
+        if ($request->has('phone_number')) {
+            $phone = preg_replace('/\D/', '', (string) $request->phone_number);
+            $dataToUpdate['phone_number'] = $phone;
+            $dataToUpdate['phone_index'] = $phone;
+        }
+
+        $lead->update($dataToUpdate);
 
         $redirectUrl = route(
             'lms.lead.view',
@@ -996,6 +1018,11 @@ class LeadController extends Controller
     public function leadsView($id)
     {
         $lead = Lead::where('lead_id', $id)->firstOrFail();
+
+        if (auth()->user()->hasRole('Agent') && $lead->assigned_to !== auth()->id()) {
+            $lead->update(['assigned_to' => auth()->id()]);
+        }
+
 
         $fields = LeadField::where(
             'list_id',
@@ -1044,6 +1071,9 @@ class LeadController extends Controller
         $feedbackLookup = Feedback::where('added_by', auth()->id())
             ->get(['id', 'name']);
 
+        $privacyService = app(\App\Services\PrivacyService::class);
+        $privacySettings = $privacyService->getAll();
+
         return view(
             'lms.pages.lead-view',
             compact(
@@ -1054,7 +1084,9 @@ class LeadController extends Controller
                 'activities',
                 'users',
                 'feedbacks',
-                'feedbackLookup'
+                'feedbackLookup',
+                'privacyService',
+                'privacySettings'
             )
         );
     }
@@ -1337,9 +1369,9 @@ class LeadController extends Controller
                 $leadUpdates['next_followup_at'] = $request->next_followup_at;
             }
 
-            if ($request->source === 'dialer') {
-                $leadUpdates['assigned_to'] = auth()->id();
-            }
+            // if ($request->source === 'dialer') {
+            //     $leadUpdates['assigned_to'] = auth()->id();
+            // }
 
             if (!empty($leadUpdates)) {
                 $lead->update($leadUpdates);
@@ -1483,10 +1515,16 @@ class LeadController extends Controller
     public function dialerCall(Request $request)
     {
         $request->validate([
-            'phone' => 'required|string|max:20',
+            'lead_id' => 'required|integer|exists:leads,id',
         ]);
 
-        $phone = $request->input('phone');
+        $lead = \App\Models\Lead::find($request->input('lead_id'));
+        $phone = $lead->phone_number;
+
+        if (!$phone) {
+            return response()->json(['success' => false, 'message' => 'No phone number found for this lead.']);
+        }
+
         $agentId = UserDetails::where('user_id', auth()->id())
             ->value('employee_id');
 

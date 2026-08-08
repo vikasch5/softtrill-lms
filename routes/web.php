@@ -4,6 +4,7 @@ use App\Http\Controllers\Lms\AuthController;
 use App\Http\Controllers\Lms\DashboardController;
 use App\Http\Controllers\Lms\LeadController;
 use App\Http\Controllers\Lms\UserController;
+use App\Http\Controllers\Lms\SettingsController;
 use App\Services\LicenseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -57,6 +58,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/dialer-call', [LeadController::class, 'dialerCall'])->name('lms.dialer.call');
     Route::post('/dialer-hangup', [LeadController::class, 'dialerHangup'])->name('lms.dialer.hangup');
     Route::post('/dialer-status', [LeadController::class, 'dialerStatus'])->name('lms.dialer.status');
+
+    // Settings / Privacy
+    Route::get('/settings/privacy', [SettingsController::class, 'privacyIndex'])->name('lms.settings.privacy');
+    Route::post('/settings/privacy', [SettingsController::class, 'privacyUpdate'])->name('lms.settings.privacy.update');
+    Route::post('/settings/privacy/preview', [SettingsController::class, 'privacyPreview'])->name('lms.settings.privacy.preview');
 });
 
 /*
