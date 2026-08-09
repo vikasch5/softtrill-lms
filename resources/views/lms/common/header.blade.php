@@ -1,242 +1,4 @@
-<style>
-    .navbar-header {
-        --followup-today-bg: linear-gradient(135deg, #e8fff1 0%, #c9f7dc 100%);
-        --followup-today-icon: #0f9f57;
-        --followup-today-ring: rgba(15, 159, 87, 0.18);
-        --followup-pending-bg: linear-gradient(135deg, #fff2e8 0%, #ffd7bd 100%);
-        --followup-pending-icon: #e06a11;
-        --followup-pending-ring: rgba(224, 106, 17, 0.18);
-        --followup-upcoming-bg: linear-gradient(135deg, #edf4ff 0%, #cfe0ff 100%);
-        --followup-upcoming-icon: #2c66f0;
-        --followup-upcoming-ring: rgba(44, 102, 240, 0.18);
-        --header-soft-border: #dbe5f2;
-        --header-surface: #ffffff;
-    }
 
-
-    .navbar-header {
-        height: auto;
-        min-height: 50px;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
-        border-bottom: 1px solid rgba(219, 229, 242, 0.95);
-        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
-        backdrop-filter: blur(10px);
-    }
-
-    .header-toolbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        width: 100%;
-    }
-
-    .header-toolbar-start,
-    .header-toolbar-end {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-shrink: 0;
-    }
-
-    .header-toolbar-center {
-        flex: 1 1 auto;
-        min-width: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .header-followups {
-        width: min(100%, 760px);
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 10px;
-    }
-
-    .header-followup-card {
-        min-width: 0;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
-        border-radius: 16px;
-        border: 1px solid var(--header-soft-border);
-        background: var(--header-surface);
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-        position: relative;
-        overflow: hidden;
-        transition: transform 0.18s ease, box-shadow 0.18s ease;
-    }
-
-    .header-followup-card::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        opacity: 1;
-        z-index: 0;
-    }
-
-    .header-followup-card>* {
-        position: relative;
-        z-index: 1;
-    }
-
-    .header-followup-card:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
-    }
-
-    .header-followup-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        font-size: 13px;
-        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
-    }
-
-    .header-followup-card.today::before {
-        background: var(--followup-today-bg);
-    }
-
-    .header-followup-card.today .header-followup-icon {
-        background: rgba(255, 255, 255, 0.64);
-        color: var(--followup-today-icon);
-        box-shadow: 0 0 0 6px var(--followup-today-ring);
-    }
-
-    .header-followup-card.pending::before {
-        background: var(--followup-pending-bg);
-    }
-
-    .header-followup-card.pending .header-followup-icon {
-        background: rgba(255, 255, 255, 0.64);
-        color: var(--followup-pending-icon);
-        box-shadow: 0 0 0 6px var(--followup-pending-ring);
-    }
-
-    .header-followup-card.upcoming::before {
-        background: var(--followup-upcoming-bg);
-    }
-
-    .header-followup-card.upcoming .header-followup-icon {
-        background: rgba(255, 255, 255, 0.64);
-        color: var(--followup-upcoming-icon);
-        box-shadow: 0 0 0 6px var(--followup-upcoming-ring);
-    }
-
-    .header-followup-content {
-        min-width: 0;
-        flex: 1 1 auto;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-    }
-
-    .header-followup-label {
-        font-size: 12px;
-        line-height: 1.2;
-        color: #43536a;
-        margin-bottom: 0;
-        font-weight: 700;
-        letter-spacing: 0;
-        text-transform: none;
-        white-space: nowrap;
-    }
-
-    .header-followup-value {
-        font-size: 18px;
-        line-height: 1;
-        color: #0f172a;
-        font-weight: 800;
-        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
-        white-space: nowrap;
-        flex-shrink: 0;
-    }
-
-    .header-followup-separator {
-        color: #64748b;
-        font-weight: 700;
-        margin: 0 1px 0 3px;
-    }
-
-    .header-toolbar-end .dropdown>button {
-        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
-    }
-
-    /* @media (max-width: 1399.98px) {
-        .header-followups {
-            width: min(100%, 640px);
-        }
-    } */
-
-    @media (max-width: 1199.98px) {
-        .navbar-header {
-            padding-top: 0.75rem;
-            padding-bottom: 0.75rem;
-        }
-
-        .header-toolbar {
-            flex-wrap: wrap;
-            align-items: flex-start;
-        }
-
-        .header-toolbar-start {
-            order: 1;
-        }
-
-        .header-toolbar-end {
-            order: 2;
-            margin-left: auto;
-        }
-
-        .header-toolbar-center {
-            order: 3;
-            flex: 0 0 100%;
-            justify-content: flex-start;
-        }
-
-        .header-followups {
-            width: 100%;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
-    }
-
-    @media (max-width: 767.98px) {
-        .header-followups {
-            grid-template-columns: 1fr;
-        }
-
-        .header-toolbar-end {
-            flex-wrap: wrap;
-            justify-content: flex-end;
-        }
-    }
-
-    @media (max-width: 575.98px) {
-        .wallet-box {
-            width: 100%;
-            justify-content: center;
-        }
-
-        .header-followup-card {
-            padding: 8px 10px;
-        }
-
-        .header-followup-value {
-            font-size: 17px;
-        }
-
-        .header-followup-label {
-            font-size: 11px;
-        }
-    }
-</style>
 <div class="navbar-header">
     <div class="header-toolbar">
         <div class="header-toolbar-start">
@@ -295,6 +57,15 @@
         </div>
         <div class="header-toolbar-end">
             <div class="d-flex flex-wrap align-items-center gap-3">
+                @if(isset($activeOffers) && $activeOffers->count() > 0)
+                    <button class="btn btn-primary d-flex align-items-center gap-2 rounded-3 px-3 py-2 fw-medium shadow-sm" 
+                            data-bs-toggle="modal" data-bs-target="#offersModal" 
+                            style="font-size: 14px;">
+                        <i class="bi bi-gift"></i>
+                        Offers
+                        <span class="badge bg-white text-primary rounded-circle ms-1">{{ $activeOffers->count() }}</span>
+                    </button>
+                @endif
                 @role('user')
                 <div class="wallet-box">
                     <i class="fas fa-wallet"></i>
@@ -402,3 +173,106 @@
         </div>
     </div>
 </div>
+
+@if(isset($activeOffers) && $activeOffers->isNotEmpty())
+<!-- Clean Professional Offers Modal -->
+<style>
+    #offersCarousel .carousel-indicators {
+        bottom: -35px;
+        margin-bottom: 0;
+    }
+    #offersCarousel .carousel-indicators button {
+        width: 8px; 
+        height: 8px; 
+        border-radius: 50%; 
+        background-color: #cbd5e1; 
+        opacity: 1; 
+        margin: 0 4px; 
+        border: none; 
+        transition: background-color 0.3s ease;
+    }
+    #offersCarousel .carousel-indicators button.active {
+        background-color: #0d6efd;
+    }
+    #offersCarousel .carousel-control-prev,
+    #offersCarousel .carousel-control-next {
+        width: 40px;
+        opacity: 0.8;
+    }
+    #offersCarousel .carousel-control-prev:hover,
+    #offersCarousel .carousel-control-next:hover {
+        opacity: 1;
+    }
+</style>
+
+<div class="modal fade" id="offersModal" tabindex="-1" aria-labelledby="offersModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width: 600px;">
+    <div class="modal-content border-0 shadow" style="border-radius: 12px; background: #ffffff;">
+      
+      <button type="button" class="btn-close position-absolute top-0 end-0 m-3 z-3 bg-white shadow-sm" 
+              data-bs-dismiss="modal" aria-label="Close" 
+              style="padding: 8px; border-radius: 50%; opacity: 1; font-size: 10px;"></button>
+
+      <div class="modal-body p-0">
+        <div id="offersCarousel" class="carousel slide" data-bs-ride="carousel">
+
+          <div class="carousel-inner" style="border-radius: 12px; overflow: hidden;">
+            @foreach($activeOffers as $index => $offer)
+            <div class="carousel-item {{ $index == 0 ? 'active' : '' }}">
+                <div class="d-flex flex-column">
+                    
+                    {{-- Image Section --}}
+                    <div class="w-100 bg-light d-flex align-items-center justify-content-center position-relative" style="min-height: 200px;">
+                        @if($offer->image)
+                            <img src="{{ asset('storage/' . $offer->image) }}" alt="Offer" class="w-100" style="height: auto; max-height: 400px; object-fit: contain; background-color: #f8fafc;">
+                        @else
+                            <i class="bi bi-image text-muted" style="font-size: 4rem; opacity: 0.3; padding: 4rem 0;"></i>
+                        @endif
+                        
+
+                    </div>
+
+                    {{-- Content Section --}}
+                    <div class="p-4 bg-white text-center">
+                        <h5 class="fw-semibold mb-2 text-dark" style="font-size: 18px;">{{ $offer->heading }}</h5>
+                        
+                        <p class="mb-4 text-secondary" style="font-size: 14px; line-height: 1.5; margin: 0 auto; max-width: 90%;">
+                            {{ $offer->description }}
+                        </p>
+                        
+                        @if($offer->url)
+                            <a href="{{ $offer->url }}" target="_blank" class="btn btn-primary w-100 py-2 rounded-2 d-flex justify-content-center align-items-center gap-2" style="font-size: 14px; font-weight: 500;">
+                                Claim Offer <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
+                        @endif
+                    </div>
+                    
+                </div>
+            </div>
+            @endforeach
+          </div>
+
+          @if($activeOffers->count() > 1)
+          <button class="carousel-control-prev" type="button" data-bs-target="#offersCarousel" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon shadow-sm rounded-circle bg-dark" aria-hidden="true" style="padding: 15px; background-size: 12px; opacity: 0.7;"></span>
+            <span class="visually-hidden">Previous</span>
+          </button>
+          
+          <button class="carousel-control-next" type="button" data-bs-target="#offersCarousel" data-bs-slide="next">
+            <span class="carousel-control-next-icon shadow-sm rounded-circle bg-dark" aria-hidden="true" style="padding: 15px; background-size: 12px; opacity: 0.7;"></span>
+            <span class="visually-hidden">Next</span>
+          </button>
+
+          <div class="carousel-indicators">
+            @foreach($activeOffers as $index => $offer)
+                <button type="button" data-bs-target="#offersCarousel" data-bs-slide-to="{{ $index }}" class="{{ $index == 0 ? 'active' : '' }}" aria-current="{{ $index == 0 ? 'true' : 'false' }}" aria-label="Slide {{ $index + 1 }}"></button>
+            @endforeach
+          </div>
+          @endif
+          
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+@endif

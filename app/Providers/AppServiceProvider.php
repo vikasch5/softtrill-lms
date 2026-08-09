@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\Lead;
+use App\Models\Offer;
+use App\Models\User;
 use App\Models\UserDetails;
 use App\Services\LicenseService;
 use Carbon\Carbon;
@@ -101,7 +103,47 @@ class AppServiceProvider extends ServiceProvider
                 ->where('next_followup_at', '>', $today->copy()->endOfDay())
                 ->count();
 
+            // --- Offer Logic ---
+            $activeOffers = collect();
+            if ($user) {
+                // Eager load details if not loaded to prevent N+1
+                if (! $user->relationLoaded('details')) {
+                    $user->load('details');
+                }
+
+                $allowedUserIds = [$user->id];
+                $details = $user->details;
+
+                if ($details) {
+                    if ($details->teamleader_id) $allowedUserIds[] = $details->teamleader_id;
+                    if ($details->manager_id) $allowedUserIds[] = $details->manager_id;
+                    if ($details->cluster_id) $allowedUserIds[] = $details->cluster_id;
+                }
+
+                $adminIds = User::role('admin')->pluck('id')->toArray();
+                $allowedUserIds = array_unique(array_merge($allowedUserIds, $adminIds));
+                
+                $todayDate = $today->format('Y-m-d');
+                $tenantId = $user->tenant_id ?? $user->id;
+
+                $activeOffers = Offer::select(['id', 'heading', 'description', 'url', 'image'])
+                    ->where('status', 1)
+                    ->where('tenant_id', $tenantId)
+                    ->whereIn('added_by', $allowedUserIds)
+                    ->where(function($q) use ($todayDate) {
+                        $q->whereNull('start_date')
+                          ->orWhere('start_date', '<=', $todayDate);
+                    })
+                    ->where(function($q) use ($todayDate) {
+                        $q->whereNull('end_date')
+                          ->orWhere('end_date', '>=', $todayDate);
+                    })
+                    ->latest('id')
+                    ->get();
+            }
+
             $view->with('headerFollowupStats', $stats);
+            $view->with('activeOffers', $activeOffers);
         });
     }
 

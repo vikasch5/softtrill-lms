@@ -33,7 +33,10 @@ class DashboardController extends Controller
 
         $leadQuery = Lead::query();
         if (!$user->hasRole('Admin')) {
-            $leadQuery->whereIn('assigned_to', $visibleUserIds);
+            $leadQuery->where(function ($q) use ($visibleUserIds) {
+                $q->whereIn('assigned_to', $visibleUserIds)
+                  ->orWhereIn('added_by', $visibleUserIds);
+            });
         }
 
         $totalLeads = (clone $leadQuery)->count();
@@ -195,13 +198,16 @@ class DashboardController extends Controller
     public function widgetData($id, Request $request)
     {
         $widget = DashboardWidget::findOrFail($id);
+        $user = Auth::user();
 
         // Allow the UI filter (Today/Weekly/Monthly/Yearly) to override group_by
         $periodMap = ['day' => 'day', 'week' => 'week', 'month' => 'month', 'year' => 'year'];
         $period    = $periodMap[$request->query('period')] ?? null;
 
+        $visibleUserIds = $this->getVisibleUserIds($user);
+
         return response()->json(
-            app(DashboardWidgetService::class)->generate($widget, $period)
+            app(DashboardWidgetService::class)->generate($widget, $period, $user, $visibleUserIds)
         );
     }
 

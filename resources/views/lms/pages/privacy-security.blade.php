@@ -64,19 +64,19 @@
                         </div>
 
                         <div class="col-lg-3">
-                            <div class="form-check mb-2">
+                            <div class="form-check checked-primary d-flex align-items-center gap-2">
                                 <input class="form-check-input mask-trigger" type="radio" name="privacy_mobile_visibility" id="mobile_show_full" value="full" {{ ($settings['mobile']['visibility'] ?? 'full') == 'full' ? 'checked' : '' }}>
                                 <label class="form-check-label" for="mobile_show_full">Show Full Number</label>
                             </div>
-                            <div class="form-check mb-2">
+                            <div class="form-check checked-primary d-flex align-items-center gap-2">
                                 <input class="form-check-input mask-trigger" type="radio" name="privacy_mobile_visibility" id="mobile_mask" value="mask" {{ ($settings['mobile']['visibility'] ?? '') == 'mask' ? 'checked' : '' }}>
                                 <label class="form-check-label" for="mobile_mask">Mask Number</label>
                             </div>
-                            <div class="form-check mb-2">
+                            <div class="form-check checked-primary d-flex align-items-center gap-2">
                                 <input class="form-check-input mask-trigger" type="radio" name="privacy_mobile_visibility" id="mobile_mask_last" value="mask_last" {{ ($settings['mobile']['visibility'] ?? '') == 'mask_last' ? 'checked' : '' }}>
                                 <label class="form-check-label" for="mobile_mask_last">Show Only Last N Digits</label>
                             </div>
-                            <div class="form-check mb-2">
+                            <div class="form-check checked-primary d-flex align-items-center gap-2">
                                 <input class="form-check-input mask-trigger" type="radio" name="privacy_mobile_visibility" id="mobile_mask_first" value="mask_first" {{ ($settings['mobile']['visibility'] ?? '') == 'mask_first' ? 'checked' : '' }}>
                                 <label class="form-check-label" for="mobile_mask_first">Show Only First N Digits</label>
                             </div>
@@ -112,11 +112,11 @@
                         </div>
                         
                         <div class="col-lg-4">
-                            <div class="form-check mb-2">
+                            <div class="form-check checked-primary d-flex align-items-center gap-2">
                                 <input class="form-check-input mask-trigger" type="radio" name="privacy_email_visibility" id="email_show_full" value="full" {{ ($settings['email']['visibility'] ?? 'full') == 'full' ? 'checked' : '' }}>
                                 <label class="form-check-label" for="email_show_full">Show Full Email</label>
                             </div>
-                            <div class="form-check mb-2">
+                            <div class="form-check checked-primary d-flex align-items-center gap-2">
                                 <input class="form-check-input mask-trigger" type="radio" name="privacy_email_visibility" id="email_mask" value="mask" {{ ($settings['email']['visibility'] ?? '') == 'mask' ? 'checked' : '' }}>
                                 <label class="form-check-label" for="email_mask">Mask Email</label>
                             </div>
@@ -131,7 +131,7 @@
                         </div>
 
 
-                        <!-- Card 3: Sensitive Field Visibility -->
+                        {{-- <!-- Card 3: Sensitive Field Visibility -->
                         <div class="col-12 mt-5">
                             <div class="section-label">Field Visibility</div>
                             <p class="text-muted small mb-3">Control overall visibility and masking for specific lead fields.</p>
@@ -238,7 +238,7 @@
                                 <label class="form-check-label fw-bold" for="action_print">Allow printing lead details</label>
                                 <div class="text-muted small">Allow authorized users to print lead profiles containing sensitive data.</div>
                             </div>
-                        </div>
+                        </div> --}}
 
                         <!-- Card 5: Role-Based Unmasked Access -->
                         <div class="col-12 mt-5">

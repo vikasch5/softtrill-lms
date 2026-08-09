@@ -21,13 +21,15 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/user-add/{id?}', [UserController::class, 'usersAdd'])->name('lms.users.add');
     Route::post('/user-save', [UserController::class, 'storeOrUpdate'])->name('lms.users.store');
     Route::post('/user-delete', [UserController::class, 'delete'])->name('lms.users.delete');
-    Route::get('/field-list', [LeadController::class, 'fieldList'])->name('lms.lead-fields.list');
-    Route::get('/field-add/{id?}', [LeadController::class, 'fieldAddIndex'])->name('lms.lead-fields.add');
-    Route::post('/field-save', [LeadController::class, 'fieldStoreOrUpdate'])->name('lms.lead-fields.store');
-    Route::delete('/field-delete', [LeadController::class, 'delete'])->name('lms.lead-fields.delete');
-    Route::get('/lead-import', [LeadController::class, 'leadImport'])->name('lms.lead.import');
-    Route::post('/lead-import', [LeadController::class, 'import'])->name('lms.leads.import.save');
-    Route::get('/lead-sample/{id}', [LeadController::class, 'downloadSample'])->name('lms.leads.sample');
+    Route::get('/field-list', [App\Http\Controllers\Lms\LeadFieldController::class, 'fieldList'])->name('lms.lead-fields.list');
+    Route::get('/field-add/{id?}', [App\Http\Controllers\Lms\LeadFieldController::class, 'fieldAddIndex'])->name('lms.lead-fields.add');
+    Route::post('/field-save', [App\Http\Controllers\Lms\LeadFieldController::class, 'fieldStoreOrUpdate'])->name('lms.lead-fields.store');
+    Route::delete('/field-delete', [App\Http\Controllers\Lms\LeadFieldController::class, 'delete'])->name('lms.lead-fields.delete');
+    
+    Route::get('/lead-import', [App\Http\Controllers\Lms\LeadImportController::class, 'leadImport'])->name('lms.lead.import');
+    Route::post('/lead-import', [App\Http\Controllers\Lms\LeadImportController::class, 'import'])->name('lms.leads.import.save');
+    Route::get('/lead-sample/{id}', [App\Http\Controllers\Lms\LeadImportController::class, 'downloadSample'])->name('lms.leads.sample');
+    
     Route::get('/lead-add/{id?}', [LeadController::class, 'leadAdd'])->name('lms.leads.add');
     Route::post('/lead-save', [LeadController::class, 'storeOrUpdate'])->name('lms.leads.store');
     Route::post('/lead-delete', [LeadController::class, 'leadDelete'])->name('lms.leads.delete');
@@ -42,11 +44,12 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/lead-update', [LeadController::class, 'updateLead'])->name('lms.leads.update');
     Route::post('/lead-quick-save', [LeadController::class, 'quickUpdate'])->name('lms.leads.quick-update');
     Route::post('/lead-note-save', [LeadController::class, 'updateLead'])->name('lms.leads.note.store');
-    Route::get('/feedback-list', [LeadController::class, 'feedbackList'])->name('lms.feedbacks.list');
-    Route::get('/feedback-add/{id?}', [LeadController::class, 'feedbackAdd'])->name('lms.feedbacks.add');
-    Route::post('/feedback-save', [LeadController::class, 'feedbackStoreOrUpdate'])->name('lms.feedbacks.store');
-    Route::post('/feedback-delete', [LeadController::class, 'feedbackDelete'])->name('lms.feedbacks.delete');
-    Route::get('/feedbacks/sub-feedbacks/{feedbackId}', [LeadController::class, 'subFeedbacks'])->name('lms.feedbacks.sub-feedbacks');
+    
+    Route::get('/feedback-list', [App\Http\Controllers\Lms\FeedbackController::class, 'feedbackList'])->name('lms.feedbacks.list');
+    Route::get('/feedback-add/{id?}', [App\Http\Controllers\Lms\FeedbackController::class, 'feedbackAdd'])->name('lms.feedbacks.add');
+    Route::post('/feedback-save', [App\Http\Controllers\Lms\FeedbackController::class, 'feedbackStoreOrUpdate'])->name('lms.feedbacks.store');
+    Route::post('/feedback-delete', [App\Http\Controllers\Lms\FeedbackController::class, 'feedbackDelete'])->name('lms.feedbacks.delete');
+    Route::get('/feedbacks/sub-feedbacks/{feedbackId}', [App\Http\Controllers\Lms\FeedbackController::class, 'subFeedbacks'])->name('lms.feedbacks.sub-feedbacks');
 
     Route::get('/dashboard-widget-list', [DashboardController::class, 'widgetsList'])->name('lms.dashboard.widgets.list');
     Route::get('/dashboard-widget', [DashboardController::class, 'dashboardWidget'])->name('lms.dashboard.widgets');
@@ -55,9 +58,16 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard/widgets/fields/{list}', [DashboardController::class, 'getFields'])->name('lms.dashboard.widgets.fields');
     Route::get('/dashboard/widget-data/{id}', [DashboardController::class, 'widgetData'])->name('lms.dashboard.widget.data');
     Route::get('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
-    Route::post('/dialer-call', [LeadController::class, 'dialerCall'])->name('lms.dialer.call');
-    Route::post('/dialer-hangup', [LeadController::class, 'dialerHangup'])->name('lms.dialer.hangup');
-    Route::post('/dialer-status', [LeadController::class, 'dialerStatus'])->name('lms.dialer.status');
+    
+    Route::post('/dialer-call', [App\Http\Controllers\Lms\DialerController::class, 'call'])->name('lms.dialer.call');
+    Route::post('/dialer-hangup', [App\Http\Controllers\Lms\DialerController::class, 'hangup'])->name('lms.dialer.hangup');
+    Route::post('/dialer-status', [App\Http\Controllers\Lms\DialerController::class, 'status'])->name('lms.dialer.status');
+    
+    Route::get('/offer-add/{id?}', [App\Http\Controllers\Lms\OfferController::class, 'offerAdd'])->name('lms.offer.add');
+    Route::get('/offer-list', [App\Http\Controllers\Lms\OfferController::class, 'offerList'])->name('lms.offers.list');
+    Route::post('/offer-store', [App\Http\Controllers\Lms\OfferController::class, 'offerStoreOrUpdate'])->name('lms.offers.store');
+    Route::post('/offer-delete', [App\Http\Controllers\Lms\OfferController::class, 'offerDelete'])->name('lms.offers.delete');
+
 
     // Settings / Privacy
     Route::get('/settings/privacy', [SettingsController::class, 'privacyIndex'])->name('lms.settings.privacy');

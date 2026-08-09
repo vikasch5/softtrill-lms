@@ -34,6 +34,7 @@
     <link rel="stylesheet" href="{{ asset('lms/css/lib/audioplayer.css') }}">
     <!-- main css -->
     <link rel="stylesheet" href="{{ asset('lms/css/style.css') }}">
+    <link rel="stylesheet" href="{{ asset('lms/css/lms.css') }}">
 
     <link rel="stylesheet" href="{{ asset('vendor/flasher/flasher.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/flasher/flasher.min.js') }}">
