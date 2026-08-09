@@ -52,6 +52,14 @@
                     <span>Users</span>
                 </a>
             </li>
+            <li
+                class="{{ in_array(Route::currentRouteName(), ['lms.offers.list','lms.offer.add']) ? 'active-page' : '' }}">
+                <a href="{{ route('lms.offers.list') }}"
+                    class="{{ in_array(Route::currentRouteName(), ['lms.offers.list','lms.offer.add']) ? 'active-page' : '' }}">
+                    <iconify-icon icon="solar:tag-price-outline" class="menu-icon"></iconify-icon>
+                    <span>Offers</span>
+                </a>
+            </li>
             @endrole
             @role('Admin')
             <li

@@ -176,34 +176,6 @@
 
 @if(isset($activeOffers) && $activeOffers->isNotEmpty())
 <!-- Clean Professional Offers Modal -->
-<style>
-    #offersCarousel .carousel-indicators {
-        bottom: -35px;
-        margin-bottom: 0;
-    }
-    #offersCarousel .carousel-indicators button {
-        width: 8px; 
-        height: 8px; 
-        border-radius: 50%; 
-        background-color: #cbd5e1; 
-        opacity: 1; 
-        margin: 0 4px; 
-        border: none; 
-        transition: background-color 0.3s ease;
-    }
-    #offersCarousel .carousel-indicators button.active {
-        background-color: #0d6efd;
-    }
-    #offersCarousel .carousel-control-prev,
-    #offersCarousel .carousel-control-next {
-        width: 40px;
-        opacity: 0.8;
-    }
-    #offersCarousel .carousel-control-prev:hover,
-    #offersCarousel .carousel-control-next:hover {
-        opacity: 1;
-    }
-</style>
 
 <div class="modal fade" id="offersModal" tabindex="-1" aria-labelledby="offersModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered" style="max-width: 600px;">

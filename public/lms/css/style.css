@@ -64,6 +64,9 @@
 / ================================= Table Of Contents =================================== **/
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap");
 :root {
+    --bs-primary: #7c56c0;
+    --bs-primary-rgb: 124, 86, 192;
+    --primary: #7c56c0;
     --default-font: ;
     --h1: clamp(2rem, 1.2rem + 4vw, 4.5rem);
     --h2: clamp(1.75rem, 1.11rem + 3.2vw, 3.75rem);
@@ -160,16 +163,16 @@
     --font-sm: 0.875rem;
     --font-xs: 0.75rem;
     --font-xxs: 0.625rem;
-    --primary-50: #e4f1ff;
-    --primary-100: #bfdcff;
-    --primary-200: #95c7ff;
-    --primary-300: #6bb1ff;
-    --primary-400: #519fff;
-    --primary-500: #458eff;
-    --primary-600: #487fff;
-    --primary-700: #486cea;
-    --primary-800: #4759d6;
-    --primary-900: #4536b6;
+    --primary-50: #f1ecfa;
+    --primary-100: #dfd2f5;
+    --primary-200: #c3aeeb;
+    --primary-300: #a78ae1;
+    --primary-400: #8f6ad6;
+    --primary-500: #835bc9;
+    --primary-600: #7c56c0;
+    --primary-700: #6b46ab;
+    --primary-800: #593694;
+    --primary-900: #49297e;
     --neutral-50: #f5f6fa;
     --neutral-100: #f3f4f6;
     --neutral-200: #ebecef;
@@ -278,11 +281,11 @@
     --yellow: #f4941e;
     --orange: #f86624;
     --pink: #de3ace;
-    --primary-light: rgba(72, 127, 255, 0.15);
+    --primary-light: rgba(124, 86, 192, 0.15);
     --yellow-light: rgba(255, 159, 41, 0.15);
     --purple-light: rgba(130, 82, 233, 0.15);
     --pink-light: rgba(250, 54, 230, 0.15);
-    --primary-light-white: rgba(72, 127, 255, 0.25);
+    --primary-light-white: rgba(124, 86, 192, 0.25);
     --yellow-light-white: rgba(255, 159, 41, 0.25);
     --purple-light-white: rgba(132, 90, 223, 0.25);
     --pink-light-white: rgba(250, 54, 230, 0.25);
@@ -300,6 +303,41 @@
     --input-bg: var(--neutral-50);
     --input-stroke: var(--neutral-300);
     --border-color: #d1d5db80;
+}
+
+.btn-primary {
+    background-color: var(--primary-600) !important;
+    border-color: var(--primary-600) !important;
+    color: #ffffff !important;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active,
+.btn-primary.active {
+    background-color: var(--primary-700) !important;
+    border-color: var(--primary-700) !important;
+    color: #ffffff !important;
+}
+
+.text-primary {
+    color: var(--primary-600) !important;
+}
+
+.bg-primary {
+    background-color: var(--primary-600) !important;
+}
+
+.bg-primary-subtle {
+    background-color: var(--primary-50) !important;
+}
+
+.text-primary-subtle {
+    color: var(--primary-700) !important;
+}
+
+.border-primary {
+    border-color: var(--primary-600) !important;
 }
 
 [data-theme="dark"] {
@@ -3767,7 +3805,7 @@ html[data-theme="dark"] .bg-warning-light-two {
 
 /* Stroke Class */
 .stroke-blue {
-    stroke: #487fff !important;
+    stroke: var(--primary-600) !important;
 }
 
 .stroke-red {

@@ -94,7 +94,7 @@ class DashboardWidgetService
             ],
             'yaxis'       => ['labels' => ['style' => ['fontSize' => '12px']]],
             'fill'        => ['opacity' => 1],
-            'colors'      => ['#487FFF'],
+            'colors'      => ['#7c56c0'],
         ];
     }
 
@@ -107,14 +107,14 @@ class DashboardWidgetService
             'type'       => 'line',
             'chart'      => ['type' => 'line', 'height' => (int)($widget->height ?? 264), 'toolbar' => ['show' => false], 'zoom' => ['enabled' => false]],
             'series'     => [['name' => $widget->title, 'data' => $rows->pluck('total')->values()->toArray()]],
-            'stroke'     => ['curve' => 'smooth', 'colors' => ['#487FFF'], 'width' => 4],
+            'stroke'     => ['curve' => 'smooth', 'colors' => ['#7c56c0'], 'width' => 4],
             'markers'    => ['size' => 0, 'strokeWidth' => 3, 'hover' => ['size' => 8]],
             'dataLabels' => ['enabled' => false],
             'grid'       => ['borderColor' => '#D1D5DB', 'strokeDashArray' => 3, 'row' => ['colors' => ['transparent', 'transparent'], 'opacity' => 0.5]],
             'xaxis'      => ['categories' => $rows->pluck('label')->values()->toArray(), 'axisBorder' => ['show' => false], 'tooltip' => ['enabled' => false], 'labels' => ['style' => ['fontSize' => '13px']]],
             'yaxis'      => ['labels' => ['style' => ['fontSize' => '13px']]],
             'tooltip'    => ['enabled' => true],
-            'colors'     => ['#487FFF'],
+            'colors'     => ['#7c56c0'],
         ];
     }
 
@@ -126,14 +126,14 @@ class DashboardWidgetService
             'type'       => 'area',
             'chart'      => ['type' => 'area', 'height' => (int)($widget->height ?? 264), 'toolbar' => ['show' => false]],
             'series'     => [['name' => $widget->title, 'data' => $rows->pluck('total')->values()->toArray()]],
-            'stroke'     => ['curve' => 'straight', 'width' => 4, 'colors' => ['#487FFF'], 'lineCap' => 'round'],
-            'fill'       => ['type' => 'gradient', 'colors' => ['#487FFF'], 'gradient' => ['shade' => 'light', 'type' => 'vertical', 'shadeIntensity' => 0.5, 'gradientToColors' => ['#487FFF00'], 'inverseColors' => false, 'opacityFrom' => 0.6, 'opacityTo' => 0.3, 'stops' => [0, 100]]],
-            'markers'    => ['colors' => ['#487FFF'], 'strokeWidth' => 3, 'size' => 0, 'hover' => ['size' => 10]],
+            'stroke'     => ['curve' => 'straight', 'width' => 4, 'colors' => ['#7c56c0'], 'lineCap' => 'round'],
+            'fill'       => ['type' => 'gradient', 'colors' => ['#7c56c0'], 'gradient' => ['shade' => 'light', 'type' => 'vertical', 'shadeIntensity' => 0.5, 'gradientToColors' => ['#7c56c000'], 'inverseColors' => false, 'opacityFrom' => 0.6, 'opacityTo' => 0.3, 'stops' => [0, 100]]],
+            'markers'    => ['colors' => ['#7c56c0'], 'strokeWidth' => 3, 'size' => 0, 'hover' => ['size' => 10]],
             'dataLabels' => ['enabled' => false],
             'grid'       => ['show' => true, 'borderColor' => '#D1D5DB', 'strokeDashArray' => 3, 'position' => 'back', 'xaxis' => ['lines' => ['show' => false]], 'yaxis' => ['lines' => ['show' => true]]],
             'xaxis'      => ['categories' => $rows->pluck('label')->values()->toArray(), 'tooltip' => ['enabled' => false], 'labels' => ['style' => ['fontSize' => '13px']]],
             'yaxis'      => ['labels' => ['style' => ['fontSize' => '13px']]],
-            'colors'     => ['#487FFF'],
+            'colors'     => ['#7c56c0'],
         ];
     }
 
