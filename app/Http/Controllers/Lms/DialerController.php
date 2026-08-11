@@ -103,7 +103,7 @@ class DialerController extends Controller
     {
         $agentId = UserDetails::where('user_id', auth()->id())
             ->value('employee_id');
-        $serverIp = gethostbyname(gethostname());
+        $serverIp = $_SERVER['SERVER_ADDR'];
 
         $params = http_build_query([
             'source' => 'test',
