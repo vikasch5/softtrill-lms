@@ -115,7 +115,7 @@ class DialerController extends Controller
         ]);
 
         $fullUrl = "http://{$serverIp}/agc/api.php?" . $params;
-
+        echo $fullUrl; // Debugging line to output the full URL
         $ch = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL => $fullUrl,
