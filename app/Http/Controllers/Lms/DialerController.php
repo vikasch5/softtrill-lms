@@ -30,6 +30,7 @@ class DialerController extends Controller
             ->value('employee_id');
 
         $serverIp = gethostbyname(gethostname());
+        $serverIp = '106.215.115.249:8082';
 
         $params = http_build_query([
             'source' => 'test',
@@ -103,7 +104,9 @@ class DialerController extends Controller
     {
         $agentId = UserDetails::where('user_id', auth()->id())
             ->value('employee_id');
-        $serverIp = $_SERVER['SERVER_ADDR'];
+        $serverIp = gethostbyname(gethostname());
+        // $_SERVER['SERVER_ADDR'];
+        $serverIp = '106.215.115.249:8082';
 
         $params = http_build_query([
             'source' => 'test',
@@ -115,7 +118,6 @@ class DialerController extends Controller
         ]);
 
         $fullUrl = "http://{$serverIp}/agc/api.php?" . $params;
-        echo $fullUrl; // Debugging line to output the full URL
         $ch = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL => $fullUrl,
@@ -160,7 +162,7 @@ class DialerController extends Controller
     {
         $agentId = UserDetails::where('user_id', auth()->id())->value('employee_id');
         $serverIp = gethostbyname(gethostname());
-
+        $serverIp = '106.215.115.249:8082';
         $params = http_build_query([
             'source' => 'test',
             'user' => '7777',
