@@ -42,7 +42,10 @@
                         Import Leads
 
                     </a>
-                     <a href="{{ route('lms.leads.add') }}" class="btn btn-primary">
+                    @endrole
+
+                    @role('Admin|Manager|Cluster|TeamLeader|Agent')
+                    <a href="{{ route('lms.leads.add') }}" class="btn btn-primary">
                         <i class="ri-upload-cloud-line"></i>
                         Add Leads
                     </a>
