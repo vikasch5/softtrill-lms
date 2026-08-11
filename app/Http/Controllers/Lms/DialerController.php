@@ -158,7 +158,7 @@ class DialerController extends Controller
      */
     public function status(Request $request)
     {
-        $agentId = auth()->id();
+        $agentId = UserDetails::where('user_id', auth()->id())->value('employee_id');
         $serverIp = gethostbyname(gethostname());
 
         $params = http_build_query([
