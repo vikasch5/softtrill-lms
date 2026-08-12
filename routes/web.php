@@ -5,7 +5,7 @@ use App\Http\Controllers\Lms\DashboardController;
 use App\Http\Controllers\Lms\LeadController;
 use App\Http\Controllers\Lms\UserController;
 use App\Http\Controllers\Lms\SettingsController;
-use App\Services\LicenseService;
+use App\Services\License\LicenseManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -77,26 +77,46 @@ Route::middleware(['auth'])->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| License Webhook (called by softtrill.com to instantly clear cache)
+| License Cache-Clear Webhook
 |--------------------------------------------------------------------------
-| When you change a license status in your softtrill.com admin panel,
-| make a POST request to this URL with { "secret": "<LICENSE_SECRET_SALT>" }.
-| The LMS will clear its cache immediately so the new status takes effect
-| on the very next page load — no waiting for the 5-minute cache to expire.
+| Called by the Softtrill license server to force an immediate re-validation.
 |
-| Example from softtrill.com (Laravel):
-|   Http::post('http://client-domain.com/license-webhook', [
-|       'secret' => env('LICENSE_SECRET_SALT'),
-|   ]);
+| Authentication: HMAC-SHA256 of request timestamp using a secret derived
+| from APP_KEY (never a shared plain-text secret in .env).
+|
+| The license server must send:
+|   Header: X-Softtrill-Webhook-Ts  (unix timestamp, max 5 minutes old)
+|   Header: X-Softtrill-Webhook-Sig (hex HMAC-SHA256 of timestamp using shared secret)
+|
+| The shared secret is: HMAC-SHA256('softtrill-webhook-v1', APP_KEY)
 */
 Route::post('/license-webhook', function (Request $request) {
-    $expectedSecret = config('license.secret_salt');
+    // Derive webhook HMAC key from APP_KEY (never from .env shared secret)
+    $appKey = config('app.key');
+    if (str_starts_with($appKey, 'base64:')) {
+        $appKey = base64_decode(substr($appKey, 7));
+    }
+    $webhookSecret = hash_hmac('sha256', 'softtrill-webhook-v1', $appKey);
 
-    if (empty($expectedSecret) || $request->input('secret') !== $expectedSecret) {
-        abort(403, 'Invalid webhook secret.');
+    $ts  = (string) $request->header('X-Softtrill-Webhook-Ts', '');
+    $sig = (string) $request->header('X-Softtrill-Webhook-Sig', '');
+
+    // Reject if timestamp is missing or more than 5 minutes old (replay protection)
+    if (empty($ts) || abs(time() - (int) $ts) > 300) {
+        \Illuminate\Support\Facades\Log::warning('[License Webhook] Replay or missing timestamp.', ['ts' => $ts, 'ip' => $request->ip()]);
+        abort(403, 'Invalid webhook request.');
     }
 
-    LicenseService::clearCache();
+    // Verify HMAC
+    $expected = hash_hmac('sha256', $ts, $webhookSecret);
+    if (!hash_equals($expected, $sig)) {
+        \Illuminate\Support\Facades\Log::warning('[License Webhook] HMAC mismatch.', ['ip' => $request->ip()]);
+        abort(403, 'Invalid webhook signature.');
+    }
+
+    // Clear the license validation cache
+    app(LicenseManager::class)->clearCache();
 
     return response()->json(['ok' => true, 'message' => 'License cache cleared.']);
 })->withoutMiddleware([\App\Http\Middleware\CheckLicense::class]);
+

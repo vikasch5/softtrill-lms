@@ -1,5 +1,19 @@
 <?php
 
+/**
+ * @deprecated This command (AES-256-CBC + eval() encryption) is no longer used in production.
+ *
+ * The Softtrill LMS now uses an Ed25519 asymmetric signing architecture for license
+ * enforcement instead of obfuscating PHP source code. Source obfuscation via eval()
+ * provides weak security and has been replaced.
+ *
+ * This file is retained for reference only. Do NOT run this command on production.
+ * The APP_SOURCE_KEY env variable is no longer required or used.
+ *
+ * @see App\Services\License\LicenseManager
+ * @see App\Services\License\LicenseVerifier
+ */
+
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;

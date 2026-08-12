@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Lms;
 
+use App\Exceptions\License\UserLimitExceededException;
 use App\Http\Controllers\Controller;
 use App\Models\Task;
 use App\Models\User;
 use App\Models\UserDetails;
+use App\Services\License\EntitlementManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
+
 class UserController extends Controller
 {
     public function usersList()
@@ -86,6 +89,25 @@ class UserController extends Controller
         DB::beginTransaction();
 
         try {
+
+            /*
+            |--------------------------------------------------------------------------
+            | USER LIMIT ENFORCEMENT (race-safe)
+            |
+            | The assertCanAddUser() call is inside the DB transaction so that the
+            | COUNT query and the INSERT happen atomically. This prevents two
+            | simultaneous requests from both reading count=N and both succeeding.
+            |
+            | The limit is read from the Ed25519-signed license payload ONLY.
+            | Changing max_users in the DB, .env, or source code does not affect
+            | the value returned by EntitlementManager (it reads the signed payload).
+            |--------------------------------------------------------------------------
+            */
+            if (!$isUpdate) {
+                /** @var EntitlementManager $entitlement */
+                $entitlement = app(EntitlementManager::class);
+                $entitlement->assertCanAddUser();
+            }
 
             /*
             |--------------------------------------------------------------------------
@@ -177,6 +199,15 @@ class UserController extends Controller
                     : 'User created successfully',
                 'redirect_url' => route('lms.users.list')
             ]);
+
+        } catch (UserLimitExceededException $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->userMessage(),
+            ], 422);
 
         } catch (\Exception $e) {
 

@@ -6,7 +6,12 @@ use App\Models\Lead;
 use App\Models\Offer;
 use App\Models\User;
 use App\Models\UserDetails;
-use App\Services\LicenseService;
+use App\Services\License\EntitlementManager;
+use App\Services\License\InstallationManager;
+use App\Services\License\LicenseClient;
+use App\Services\License\LicenseManager;
+use App\Services\License\LicenseVerifier;
+use App\Services\License\TamperDetector;
 use Carbon\Carbon;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
@@ -20,7 +25,53 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Bind LicenseVerifier as a singleton — stateless, no side-effects
+        $this->app->singleton(LicenseVerifier::class, function ($app) {
+            return new LicenseVerifier(
+                publicKeyBase64: config('license.public_key'),
+                expectedKeyId:   config('license.key_id'),
+                expectedProduct: config('license.product'),
+            );
+        });
+
+        // Bind LicenseClient as a singleton
+        $this->app->singleton(LicenseClient::class, function ($app) {
+            return new LicenseClient(
+                serverUrl: config('license.server_url'),
+                timeout:   config('license.timeout', 10),
+            );
+        });
+
+        // Bind InstallationManager — depends on LicenseVerifier
+        $this->app->singleton(InstallationManager::class, function ($app) {
+            return new InstallationManager(
+                verifier: $app->make(LicenseVerifier::class),
+            );
+        });
+
+        // Bind LicenseManager — orchestrator, depends on all three
+        $this->app->singleton(LicenseManager::class, function ($app) {
+            return new LicenseManager(
+                verifier:             $app->make(LicenseVerifier::class),
+                client:               $app->make(LicenseClient::class),
+                installationManager:  $app->make(InstallationManager::class),
+            );
+        });
+
+        // Bind EntitlementManager — depends on LicenseManager
+        $this->app->singleton(EntitlementManager::class, function ($app) {
+            return new EntitlementManager(
+                licenseManager: $app->make(LicenseManager::class),
+            );
+        });
+
+        // Bind TamperDetector
+        $this->app->singleton(TamperDetector::class, function ($app) {
+            return new TamperDetector(
+                verifier:     $app->make(LicenseVerifier::class),
+                manifestPath: config('license.manifest_path'),
+            );
+        });
     }
 
     /**
@@ -149,30 +200,35 @@ class AppServiceProvider extends ServiceProvider
 
     /**
      * Verifies core application integrity on boot.
-     * Skipped in CLI context (artisan commands) to allow migrations/commands to run.
+     *
+     * This is a SECOND enforcement point (in addition to the CheckLicense middleware).
+     * Having two independent enforcement points means a customer must bypass BOTH
+     * the middleware AND the service provider to avoid license checks.
+     *
+     * Skipped in CLI context to allow migrations/commands to run normally.
      */
     private function verifyApplicationIntegrity(): void
     {
-        // Don't run during artisan commands (migrations, queue, etc.)
         if (app()->runningInConsole()) {
             return;
         }
 
-        $status = LicenseService::check();
-        // dd($status);
-
-        if ($status !== 'active') {
-            $messages = [
-                'paused' => 'Application license is paused. Contact Softtrill support.',
-                'expired' => 'Application license has expired. Renew at softtrill.com.',
-                'not_found' => 'Application is not registered. Contact Softtrill support.',
-                'unreachable' => 'License server unreachable. Please try again later.',
-            ];
-
-            abort(
-                $status === 'unreachable' ? 503 : 403,
-                $messages[$status] ?? 'License verification failed.'
-            );
+        try {
+            // LicenseManager::boot() verifies the Ed25519-signed entitlement.
+            // It uses a short-lived cache flag to avoid a DB hit on every request.
+            app(LicenseManager::class)->boot();
+        } catch (\App\Exceptions\License\LicenseExpiredException $e) {
+            abort(403, $e->userMessage());
+        } catch (\App\Exceptions\License\LicenseRevokedException $e) {
+            abort(403, $e->userMessage());
+        } catch (\App\Exceptions\License\LicenseServerUnavailableException $e) {
+            abort(503, $e->userMessage());
+        } catch (\App\Exceptions\License\LicenseTamperedException $e) {
+            // Do not expose which check failed
+            abort(403, 'License validation failed. Please contact Softtrill support.');
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[AppServiceProvider] License boot error: ' . $e->getMessage());
+            abort(403, 'License validation failed. Please contact Softtrill support.');
         }
     }
 }
