@@ -31,11 +31,11 @@ return new class extends Migration
             $table->unsignedBigInteger('customer_id');
             $table->foreign('customer_id')->references('id')->on('customers')->onDelete('cascade');
             $table->string('product', 50)->default('softtrill-lms');
-            $table->string('license_key', 100)->unique(); // what the customer enters
+            $table->string('license_key', 100)->unique();
             $table->enum('status', ['active', 'suspended', 'revoked', 'expired'])->default('active');
             $table->unsignedInteger('max_users')->default(10);
             $table->unsignedInteger('max_activations')->default(1);
-            $table->json('features')->nullable();          // {"dialer":true,"export":true}
+            $table->json('features')->nullable();         
             $table->timestamp('expires_at');
             $table->timestamp('issued_at')->useCurrent();
             $table->string('plan_name', 100)->nullable();
