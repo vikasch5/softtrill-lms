@@ -230,11 +230,18 @@ class LeadController extends Controller
                 'status',
                 'assigned_to',
                 'created_at',
+                'feedback',
+                'sub_feedback',
+                'feedback_remarks',
+                'followup_date',
             ], $fields->pluck('slug')->all()));
 
             $query->orderBy('id')->chunkById(1000, function ($leads) use ($file, $fields) {
+                $leads->load(['leadFeedback.feedback', 'leadFeedback.subFeedback']);
+
                 foreach ($leads as $lead) {
-                    $data = $lead->data ?? [];
+                    $data        = $lead->data ?? [];
+                    $leadFeedback = $lead->leadFeedback;
 
                     $row = [
                         $lead->lead_id,
@@ -244,6 +251,13 @@ class LeadController extends Controller
                         $lead->status,
                         $lead->assigned_to,
                         optional($lead->created_at)->format('Y-m-d H:i:s'),
+                        optional($leadFeedback?->feedback)->name,
+                        optional($leadFeedback?->subFeedback)->name,
+                        $leadFeedback?->remarks,
+                        optional($leadFeedback?->followup_date instanceof \Carbon\Carbon
+                            ? $leadFeedback->followup_date
+                            : ($leadFeedback?->followup_date ? \Carbon\Carbon::parse($leadFeedback->followup_date) : null)
+                        )->format('Y-m-d H:i:s'),
                     ];
 
                     foreach ($fields as $field) {

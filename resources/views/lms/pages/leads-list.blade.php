@@ -26,13 +26,16 @@
                         Assign Lead
                     </button>
 
-                    <a href="{{ request()->filled('list_id') ? route('lms.leads.download', ['list_id' => request('list_id')]) : '#' }}"
-                        class="btn btn-outline-success"
-                        id="downloadLeadList"
-                        data-download-url="{{ route('lms.leads.download') }}">
-                        <i class="ri-download-2-line"></i>
-                        Download List
-                    </a>
+                    
+                    @endrole
+                    @role('Admin|Cluster')
+                        <a href="{{ request()->filled('list_id') ? route('lms.leads.download', ['list_id' => request('list_id')]) : '#' }}"
+                            class="btn btn-outline-success"
+                            id="downloadLeadList"
+                            data-download-url="{{ route('lms.leads.download') }}">
+                            <i class="ri-download-2-line"></i>
+                            Download List
+                        </a>
                     @endrole
 
                     @role('Admin|Manager|Cluster')
