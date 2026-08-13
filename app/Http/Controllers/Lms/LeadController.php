@@ -237,7 +237,7 @@ class LeadController extends Controller
             ], $fields->pluck('slug')->all()));
 
             $query->orderBy('id')->chunkById(1000, function ($leads) use ($file, $fields) {
-                $leads->load(['leadFeedback.feedback', 'leadFeedback.subFeedback']);
+                $leads->load(['leadFeedback.feedback', 'leadFeedback.subFeedback', 'assignedTo.details']);
 
                 foreach ($leads as $lead) {
                     $data        = $lead->data ?? [];
@@ -249,7 +249,7 @@ class LeadController extends Controller
                         $lead->email,
                         $lead->phone_number,
                         $lead->status,
-                        $lead->assigned_to,
+                        $lead->assignedTo?->details?->employee_id ?? $lead->assigned_to,
                         optional($lead->created_at)->format('Y-m-d H:i:s'),
                         optional($leadFeedback?->feedback)->name,
                         optional($leadFeedback?->subFeedback)->name,

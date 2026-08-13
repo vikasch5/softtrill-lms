@@ -21,12 +21,10 @@
                 <div class="d-flex gap-2 flex-wrap">
 
                     @role('Admin|Manager|Cluster|TeamLeader')
-                    <button type="button" class="btn btn-outline-dark" id="openAssignLeadModal">
-                        <i class="ri-user-settings-line"></i>
-                        Assign Lead
-                    </button>
-
-                    
+                        <button type="button" class="btn btn-outline-dark" id="openAssignLeadModal">
+                            <i class="ri-user-settings-line"></i>
+                            Assign Lead
+                        </button>
                     @endrole
                     @role('Admin|Cluster')
                         <a href="{{ request()->filled('list_id') ? route('lms.leads.download', ['list_id' => request('list_id')]) : '#' }}"
