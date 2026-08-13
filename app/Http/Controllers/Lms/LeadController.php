@@ -19,8 +19,8 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Log;
 use Maatwebsite\Excel\Facades\Excel;
+use Log;
 
 class LeadController extends Controller
 {
@@ -44,7 +44,7 @@ class LeadController extends Controller
                 'created_at',
                 'added_by',
             ])
-            ->with(['list', 'assignedTo','leadFeedback.feedback']);
+            ->with(['list', 'assignedTo', 'leadFeedback.feedback']);
 
         // Admin sees everything, others see leads within their hierarchy
         if (!$user->hasRole('Admin')) {
@@ -156,7 +156,7 @@ class LeadController extends Controller
             return $query->whereHas(
                 'details',
                 fn($details) =>
-                $details->where('cluster_id', $user->id)
+                    $details->where('cluster_id', $user->id)
             );
         }
 
@@ -164,7 +164,7 @@ class LeadController extends Controller
             return $query->whereHas(
                 'details',
                 fn($details) =>
-                $details->where('manager_id', $user->id)
+                    $details->where('manager_id', $user->id)
             );
         }
 
@@ -172,7 +172,7 @@ class LeadController extends Controller
             return $query->whereHas(
                 'details',
                 fn($details) =>
-                $details->where('teamleader_id', $user->id)
+                    $details->where('teamleader_id', $user->id)
             );
         }
 
@@ -543,81 +543,213 @@ class LeadController extends Controller
         ]);
     }
 
-    public function leadsView($id)
-    {
-        $lead = Lead::where('lead_id', $id)->firstOrFail();
+    public function leadsView(Request $request, $id)
+{
+    $user = auth()->user();
 
-        if (auth()->user()->hasRole('Agent') && $lead->assigned_to !== auth()->id()) {
-            $lead->update(['assigned_to' => auth()->id()]);
+    $lead = Lead::where('lead_id', $id)->firstOrFail();
+
+    $isDialerRequest = $request->filled('dialer_lead_id');
+
+    /*
+    |--------------------------------------------------------------------------
+    | DIALER REQUEST
+    |--------------------------------------------------------------------------
+    */
+
+    if ($isDialerRequest) {
+
+        $dialerLeadId = (string) $request->query('dialer_lead_id');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Fresh lead coming from dialer
+        |--------------------------------------------------------------------------
+        */
+
+        if (empty($lead->dialer_lead_id)) {
+
+            $lead->update([
+                'dialer_lead_id'  => $dialerLeadId,
+                'assigned_to'     => $user->id,
+                'assigned_at'     => now(),
+                'assignment_type' => 'dialer',
+            ]);
+
+            $lead->refresh();
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | Existing dialer lead
+        |--------------------------------------------------------------------------
+        */
 
-        $fields = LeadField::where(
-            'list_id',
-            $lead->list_id
-        )
-            ->orderBy('sort_order')
-            ->get();
+        elseif ((string) $lead->dialer_lead_id !== $dialerLeadId) {
 
-        $leadFeedback = LeadFeedback::with([
-            'feedback',
-            'subFeedback',
-            'user'
-        ])
-            ->where('lead_id', $lead->id)
-            ->latest('id')
-            ->get();
+            abort(403, 'Invalid dialer lead.');
+        }
 
-        // $followups = LeadFollowup::where(
-        //     'lead_id',
-        //     $lead->id
-        // )
-        //     ->latest('id')
-        //     ->get();
-
-        $activities = LeadActivityLog::with('user:id,name')
-            ->where(
-                'lead_id',
-                $lead->id
-            )
-            ->latest('id')
-            ->limit(50)
-            ->get();
-
-        $users = User::select(
-            'id',
-            'name'
-        )
-            ->orderBy('name')
-            ->get();
-
-        $feedbacks = Feedback::where('parent_id', null)
-            // ->where('added_by', auth()->id())
-            ->orderBy('name')
-            ->get();
-
-        $feedbackLookup = Feedback::where('added_by', auth()->id())
-            ->get(['id', 'name']);
-
-        $privacyService = app(\App\Services\PrivacyService::class);
-        $privacySettings = $privacyService->getAll();
-
-        return view(
-            'lms.pages.lead-view',
-            compact(
-                'lead',
-                'fields',
-                'leadFeedback',
-                // 'followups',
-                'activities',
-                'users',
-                'feedbacks',
-                'feedbackLookup',
-                'privacyService',
-                'privacySettings'
-            )
-        );
+        /*
+        |--------------------------------------------------------------------------
+        | Existing assigned lead
+        |--------------------------------------------------------------------------
+        |
+        | IMPORTANT:
+        | Do NOT change assigned_to here.
+        |
+        */
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | NORMAL LMS REQUEST
+    |--------------------------------------------------------------------------
+    |
+    | Example:
+    | /lead-view/LS001007
+    |
+    | This is NOT from dialer.
+    |
+    */
+
+    else {
+
+        if ($user->hasRole('Agent')) {
+
+            /*
+             * Agent can only view his own assigned leads.
+             */
+            if ((int) $lead->assigned_to !== (int) $user->id) {
+                abort(403, 'You are not allowed to view this lead.');
+            }
+        }
+
+        elseif ($user->hasRole('Team Leader')) {
+
+            /*
+             * TL can view:
+             * 1. His own leads
+             * 2. Leads assigned to his agents
+             */
+
+            $allowedAgentIds = User::role('Agent')
+                ->where('team_leader_id', $user->id)
+                ->pluck('id');
+
+            $allowedAgentIds->push($user->id);
+
+            if (!$allowedAgentIds->contains($lead->assigned_to)) {
+                abort(403, 'You are not allowed to view this lead.');
+            }
+        }
+
+        elseif ($user->hasRole('Manager')) {
+
+            /*
+             * Manager can view leads assigned to:
+             * Manager
+             * His Team Leaders
+             * Their Agents
+             */
+
+            $teamLeaderIds = User::role('Team Leader')
+                ->where('manager_id', $user->id)
+                ->pluck('id');
+
+            $agentIds = User::role('Agent')
+                ->whereIn('team_leader_id', $teamLeaderIds)
+                ->pluck('id');
+
+            $allowedUserIds = $teamLeaderIds
+                ->merge($agentIds)
+                ->push($user->id);
+
+            if (!$allowedUserIds->contains($lead->assigned_to)) {
+                abort(403, 'You are not allowed to view this lead.');
+            }
+        }
+
+        elseif ($user->hasRole('Cluster')) {
+
+            /*
+             * Cluster can view leads belonging to its cluster.
+             *
+             * Prefer checking cluster_id directly on the lead.
+             */
+
+            if ((int) $lead->cluster_id !== (int) $user->cluster_id) {
+                abort(403, 'You are not allowed to view this lead.');
+            }
+        }
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | LOAD LEAD DATA
+    |--------------------------------------------------------------------------
+    */
+
+    $fields = LeadField::where(
+        'list_id',
+        $lead->list_id
+    )
+        ->orderBy('sort_order')
+        ->get();
+
+    $leadFeedback = LeadFeedback::with([
+        'feedback',
+        'subFeedback',
+        'user'
+    ])
+        ->where('lead_id', $lead->id)
+        ->latest('id')
+        ->get();
+
+    $activities = LeadActivityLog::with('user:id,name')
+        ->where('lead_id', $lead->id)
+        ->latest('id')
+        ->limit(50)
+        ->get();
+
+    $users = User::select(
+        'id',
+        'name'
+    )
+        ->orderBy('name')
+        ->get();
+
+    $feedbacks = Feedback::whereNull('parent_id')
+        ->orderBy('name')
+        ->get();
+
+    $feedbackLookup = Feedback::where(
+        'added_by',
+        $user->id
+    )->get([
+        'id',
+        'name'
+    ]);
+
+    $privacyService = app(\App\Services\PrivacyService::class);
+    $privacySettings = $privacyService->getAll();
+
+    return view(
+        'lms.pages.lead-view',
+        compact(
+            'lead',
+            'fields',
+            'leadFeedback',
+            'activities',
+            'users',
+            'feedbacks',
+            'feedbackLookup',
+            'privacyService',
+            'privacySettings'
+        )
+    );
+}
 
     public function leadDelete(Request $request)
     {
@@ -733,7 +865,8 @@ class LeadController extends Controller
                 ], 404);
             }
 
-            $assignedUser = $this->assignableUsersQuery($user, $request->target_role)
+            $assignedUser = $this
+                ->assignableUsersQuery($user, $request->target_role)
                 ->find($request->user_id);
 
             if (!$assignedUser) {
@@ -876,7 +1009,8 @@ class LeadController extends Controller
         if ($request->filled('parent_id') && $request->role === 'TeamLeader') {
             $managerAllowed = $user->hasRole('Manager')
                 ? $request->integer('parent_id') === $user->id
-                : $this->assignableUsersQuery($user, 'Manager')
+                : $this
+                    ->assignableUsersQuery($user, 'Manager')
                     ->whereKey($request->integer('parent_id'))
                     ->exists();
 
@@ -885,14 +1019,15 @@ class LeadController extends Controller
             $query->whereHas(
                 'details',
                 fn($details) =>
-                $details->where('manager_id', $request->integer('parent_id'))
+                    $details->where('manager_id', $request->integer('parent_id'))
             );
         }
 
         if ($request->filled('parent_id') && $request->role === 'Agent') {
             $teamLeaderAllowed = $user->hasRole('TeamLeader')
                 ? $request->integer('parent_id') === $user->id
-                : $this->assignableUsersQuery($user, 'TeamLeader')
+                : $this
+                    ->assignableUsersQuery($user, 'TeamLeader')
                     ->whereKey($request->integer('parent_id'))
                     ->exists();
 
@@ -901,7 +1036,7 @@ class LeadController extends Controller
             $query->whereHas(
                 'details',
                 fn($details) =>
-                $details->where('teamleader_id', $request->integer('parent_id'))
+                    $details->where('teamleader_id', $request->integer('parent_id'))
             );
         }
 
