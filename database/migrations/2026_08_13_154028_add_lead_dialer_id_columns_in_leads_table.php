@@ -12,7 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('leads', function (Blueprint $table) {
-            $table->string('dialer_lead_id')->after('lead_id')->nullable()->index();
+            $table->string('dialer_lead_id')
+                ->after('lead_id')
+                ->nullable()
+                ->index();
+
+            $table->timestamp('assigned_at')
+                ->after('assigned_to')
+                ->nullable();
+
+            $table->string('assignment_type')
+                ->after('assigned_at')
+                ->nullable();
         });
     }
 
@@ -22,7 +33,11 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('leads', function (Blueprint $table) {
-            $table->dropColumn('dialer_lead_id');
+            $table->dropColumn([
+                'dialer_lead_id',
+                'assigned_at',
+                'assignment_type',
+            ]);
         });
     }
 };

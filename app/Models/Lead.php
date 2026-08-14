@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Model;
 
 class Lead extends Model
 {
@@ -18,6 +18,8 @@ class Lead extends Model
         'email',
         'phone_number',
         'assigned_to',
+        'assigned_at',
+        'assignment_type',
         'status',
         'email_index',
         'phone_index',
