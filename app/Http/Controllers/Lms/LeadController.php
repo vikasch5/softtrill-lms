@@ -591,70 +591,70 @@ class LeadController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    if ($user->hasRole('Agent')) {
+    // if ($user->hasRole('Agent')) {
 
-        /*
-         * Agent can only view his own assigned leads.
-         */
-        if ((int) $lead->assigned_to !== (int) $user->id) {
-            abort(403, 'You are not allowed to view this lead.');
-        }
-    }
+    //     /*
+    //      * Agent can only view his own assigned leads.
+    //      */
+    //     if ((int) $lead->assigned_to !== (int) $user->id) {
+    //         abort(403, 'You are not allowed to view this lead.');
+    //     }
+    // }
 
-    elseif ($user->hasRole('Team Leader')) {
+    // elseif ($user->hasRole('Team Leader')) {
 
-        /*
-         * TL can view:
-         * 1. His own leads
-         * 2. Leads assigned to his agents
-         */
+    //     /*
+    //      * TL can view:
+    //      * 1. His own leads
+    //      * 2. Leads assigned to his agents
+    //      */
 
-        $allowedAgentIds = User::role('Agent')
-            ->where('team_leader_id', $user->id)
-            ->pluck('id');
+    //     $allowedAgentIds = User::role('Agent')
+    //         ->where('team_leader_id', $user->id)
+    //         ->pluck('id');
 
-        $allowedAgentIds->push($user->id);
+    //     $allowedAgentIds->push($user->id);
 
-        if (!$allowedAgentIds->contains((int) $lead->assigned_to)) {
-            abort(403, 'You are not allowed to view this lead.');
-        }
-    }
+    //     if (!$allowedAgentIds->contains((int) $lead->assigned_to)) {
+    //         abort(403, 'You are not allowed to view this lead.');
+    //     }
+    // }
 
-    elseif ($user->hasRole('Manager')) {
+    // elseif ($user->hasRole('Manager')) {
 
-        /*
-         * Manager can view leads assigned to:
-         * 1. Himself
-         * 2. His Team Leaders
-         * 3. Their Agents
-         */
+    //     /*
+    //      * Manager can view leads assigned to:
+    //      * 1. Himself
+    //      * 2. His Team Leaders
+    //      * 3. Their Agents
+    //      */
 
-        $teamLeaderIds = User::role('Team Leader')
-            ->where('manager_id', $user->id)
-            ->pluck('id');
+    //     $teamLeaderIds = User::role('Team Leader')
+    //         ->where('manager_id', $user->id)
+    //         ->pluck('id');
 
-        $agentIds = User::role('Agent')
-            ->whereIn('team_leader_id', $teamLeaderIds)
-            ->pluck('id');
+    //     $agentIds = User::role('Agent')
+    //         ->whereIn('team_leader_id', $teamLeaderIds)
+    //         ->pluck('id');
 
-        $allowedUserIds = $teamLeaderIds
-            ->merge($agentIds)
-            ->push($user->id);
+    //     $allowedUserIds = $teamLeaderIds
+    //         ->merge($agentIds)
+    //         ->push($user->id);
 
-        if (!$allowedUserIds->contains((int) $lead->assigned_to)) {
-            abort(403, 'You are not allowed to view this lead.');
-        }
-    }
+    //     if (!$allowedUserIds->contains((int) $lead->assigned_to)) {
+    //         abort(403, 'You are not allowed to view this lead.');
+    //     }
+    // }
 
-    elseif ($user->hasRole('Cluster')) {
+    // elseif ($user->hasRole('Cluster')) {
 
-        /*
-         * Cluster can view leads belonging to its cluster.
-         */
-        if ((int) $lead->cluster_id !== (int) $user->cluster_id) {
-            abort(403, 'You are not allowed to view this lead.');
-        }
-    }
+    //     /*
+    //      * Cluster can view leads belonging to its cluster.
+    //      */
+    //     if ((int) $lead->cluster_id !== (int) $user->cluster_id) {
+    //         abort(403, 'You are not allowed to view this lead.');
+    //     }
+    // }
 
     /*
     |--------------------------------------------------------------------------
