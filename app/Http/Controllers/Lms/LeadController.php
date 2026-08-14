@@ -549,6 +549,12 @@ class LeadController extends Controller
 
     $lead = Lead::where('lead_id', $id)->firstOrFail();
 
+    if($request->source == 'dialer'){
+        $lead->update([
+               
+                'assigned_to'     => $user->id,
+            ]);
+    }
     /*
     |--------------------------------------------------------------------------
     | DIALER REQUEST
