@@ -51,9 +51,7 @@ class DashboardController extends Controller
 
         $activeLeads = max(0, $totalLeads - $convertedLeads - $pendingLeads);
 
-        $agentQuery = User::query()->whereHas('roles', function ($query) {
-            $query->where('name', 'Agent');
-        });
+        $agentQuery = User::withoutRole('Admin');
 
         if (!$user->hasRole('Admin')) {
             $agentQuery->whereIn('id', $visibleUserIds);
