@@ -21,13 +21,65 @@ class UserController extends Controller
 {
     public function usersList()
     {
-        $users = User::with('details')
-            ->withoutRole('Admin')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $user = Auth::user();
+        
+        $query = User::with('details')->withoutRole('Admin');
 
-        // dd($users);
+        if (!$user->hasRole('Admin')) {
+            $visibleIds = $this->getVisibleUserIds($user);
+            $query->whereIn('id', $visibleIds);
+        }
+
+        $users = $query->orderBy('created_at', 'desc')->get();
+
         return view('lms.pages.users-list', compact('users'));
+    }
+
+    private function getVisibleUserIds($user): array
+    {
+        $userId = $user->id;
+
+        if ($user->hasRole('Admin')) {
+            return [];
+        }
+
+        $visibleIds = [$userId];
+
+        if ($user->hasRole('Manager')) {
+            $teamLeaderIds = UserDetails::where('manager_id', $userId)
+                ->pluck('user_id')
+                ->toArray();
+
+            $visibleIds = array_merge($visibleIds, $teamLeaderIds);
+
+            if (!empty($teamLeaderIds)) {
+                $agentIds = UserDetails::whereIn('teamleader_id', $teamLeaderIds)
+                    ->pluck('user_id')
+                    ->toArray();
+
+                $visibleIds = array_merge($visibleIds, $agentIds);
+            }
+
+            $directAgentIds = UserDetails::where('manager_id', $userId)
+                ->pluck('user_id')
+                ->toArray();
+
+            $visibleIds = array_merge($visibleIds, $directAgentIds);
+        } elseif ($user->hasRole('Cluster')) {
+            $clusterUserIds = UserDetails::where('cluster_id', $userId)
+                ->pluck('user_id')
+                ->toArray();
+
+            $visibleIds = array_merge($visibleIds, $clusterUserIds);
+        } elseif ($user->hasRole('TeamLeader')) {
+            $agentIds = UserDetails::where('teamleader_id', $userId)
+                ->pluck('user_id')
+                ->toArray();
+
+            $visibleIds = array_merge($visibleIds, $agentIds);
+        }
+
+        return array_values(array_unique($visibleIds));
     }
 
     public function usersAdd($id = null)
