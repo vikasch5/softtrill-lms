@@ -57,6 +57,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/dashboard-widget-store', [DashboardController::class, 'dashboardWidgetStore'])->name('lms.dashboard.widgets.store');
     Route::get('/dashboard/widgets/fields/{list}', [DashboardController::class, 'getFields'])->name('lms.dashboard.widgets.fields');
     Route::get('/dashboard/widget-data/{id}', [DashboardController::class, 'widgetData'])->name('lms.dashboard.widget.data');
+    Route::post('/keep-alive', [AuthController::class, 'keepAlive'])->name('lms.keep-alive');
+    Route::post('/mark-offline', [AuthController::class, 'markOffline'])->name('lms.mark-offline');
     Route::get('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
     
     Route::post('/dialer-call', [App\Http\Controllers\Lms\DialerController::class, 'call'])->name('lms.dialer.call');
@@ -91,32 +93,16 @@ Route::middleware(['auth'])->group(function () {
 | The shared secret is: HMAC-SHA256('softtrill-webhook-v1', APP_KEY)
 */
 Route::post('/license-webhook', function (Request $request) {
-    // Derive webhook HMAC key from APP_KEY (never from .env shared secret)
-    $appKey = config('app.key');
-    if (str_starts_with($appKey, 'base64:')) {
-        $appKey = base64_decode(substr($appKey, 7));
+    try {
+        
+        \Illuminate\Support\Facades\Artisan::call('softtrill:license:refresh');
+        return response()->json(['ok' => true, 'message' => 'License refreshed successfully.']);
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::error('[License Webhook] Failed to run refresh command.', ['error' => $e->getMessage()]);
+        return response()->json(['ok' => false, 'error' => 'Failed to refresh license.'], 500);
     }
-    $webhookSecret = hash_hmac('sha256', 'softtrill-webhook-v1', $appKey);
-
-    $ts  = (string) $request->header('X-Softtrill-Webhook-Ts', '');
-    $sig = (string) $request->header('X-Softtrill-Webhook-Sig', '');
-
-    // Reject if timestamp is missing or more than 5 minutes old (replay protection)
-    if (empty($ts) || abs(time() - (int) $ts) > 300) {
-        \Illuminate\Support\Facades\Log::warning('[License Webhook] Replay or missing timestamp.', ['ts' => $ts, 'ip' => $request->ip()]);
-        abort(403, 'Invalid webhook request.');
-    }
-
-    // Verify HMAC
-    $expected = hash_hmac('sha256', $ts, $webhookSecret);
-    if (!hash_equals($expected, $sig)) {
-        \Illuminate\Support\Facades\Log::warning('[License Webhook] HMAC mismatch.', ['ip' => $request->ip()]);
-        abort(403, 'Invalid webhook signature.');
-    }
-
-    // Clear the license validation cache
-    app(LicenseManager::class)->clearCache();
-
-    return response()->json(['ok' => true, 'message' => 'License cache cleared.']);
-})->withoutMiddleware([\App\Http\Middleware\CheckLicense::class]);
+})->withoutMiddleware([
+    \App\Http\Middleware\CheckLicense::class,
+    \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
+]);
 

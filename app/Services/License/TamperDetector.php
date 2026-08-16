@@ -52,8 +52,10 @@ final class TamperDetector
     public function checkIntegrity(?string $installationId = null): bool
     {
         if (empty($this->manifestPath) || !file_exists($this->manifestPath)) {
-            // No manifest — skip check (manifest distributed with each release)
-            return true;
+            // A hacker might delete the manifest to bypass checks. We must block this.
+            Log::warning('[TamperDetector] Manifest missing. Assuming tampered.');
+            $this->tamperDetected = true;
+            return false;
         }
 
         try {
@@ -100,8 +102,9 @@ final class TamperDetector
 
         } catch (\Throwable $e) {
             Log::warning('[TamperDetector] Integrity check error: ' . $e->getMessage());
-            // Errors in tamper detection are non-fatal — don't crash the app
-            return true;
+            // If the manifest is unsigned or corrupted, this is a tamper attempt!
+            $this->tamperDetected = true;
+            return false;
         }
     }
 

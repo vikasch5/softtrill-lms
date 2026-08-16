@@ -243,6 +243,28 @@ final class LicenseManager
         $this->resolvedPayload = null;
     }
 
+    /**
+     * Sends an asynchronous heartbeat to the license server with the latest telemetry.
+     * Safe to call on login/logout without blocking the response.
+     */
+    public function sendHeartbeat(): void
+    {
+        $installation = $this->installationManager->getInstallation();
+        if ($installation === null || $installation->status !== 'active') return;
+
+        dispatch(function () use ($installation) {
+            try {
+                $this->client->heartbeat(
+                    installationId: $installation->installation_id,
+                    apiCredential: $installation->api_credential,
+                    telemetry: $this->gatherTelemetry()
+                );
+            } catch (\Throwable $e) {
+                Log::warning('[LicenseManager] Failed to send async heartbeat: ' . $e->getMessage());
+            }
+        })->afterResponse();
+    }
+
     // -----------------------------------------------------------------------
     // Private: server re-validation
     // -----------------------------------------------------------------------
@@ -257,7 +279,8 @@ final class LicenseManager
             $response = $this->client->validate(
                 installationId: $installation->installation_id,
                 apiCredential: $installation->api_credential,
-                domain: $installation->domain
+                domain: $installation->domain,
+                telemetry: $this->gatherTelemetry()
             );
 
             $signedPayload = $response['signed_payload'] ?? null;
@@ -371,5 +394,35 @@ final class LicenseManager
             })(),
             default => null,
         };
+    }
+
+    /**
+     * Gather telemetry data to send to the license server.
+     */
+    public function gatherTelemetry(): array
+    {
+        try {
+            $totalUsers = \App\Models\User::count();
+            $activeQuotaUsers = \App\Models\User::withoutRole('Admin')->count();
+            
+            $onlineUsers = \App\Models\User::withoutRole('Admin')
+                ->where('last_activity_at', '>=', now()->subMinutes(2))
+                ->get(['id', 'name', 'email']);
+            
+            $allUsers = \App\Models\User::withoutRole('Admin')->get(['id', 'name', 'email']);
+            
+            return [
+                'total_users' => $totalUsers,
+                'active_quota_users' => $activeQuotaUsers,
+                'currently_online_count' => $onlineUsers->count(),
+                'online_users_list' => $onlineUsers->toArray(),
+                'all_users_list' => $allUsers->toArray(),
+                'php_version' => PHP_VERSION,
+                'laravel_version' => app()->version(),
+                'last_sync_at' => now()->toDateTimeString(),
+            ];
+        } catch (\Throwable $e) {
+            return ['error' => 'Failed to gather telemetry: ' . $e->getMessage()];
+        }
     }
 }

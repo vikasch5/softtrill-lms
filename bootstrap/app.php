@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Note: AppServiceProvider::verifyApplicationIntegrity() provides a SECOND,
         // independent enforcement point that runs even if this middleware is removed.
         $middleware->web(append: [
+            \App\Http\Middleware\UpdateUserActivity::class,
             \App\Http\Middleware\CheckLicense::class,
         ]);
 

@@ -30,7 +30,7 @@ return [
     'public_key' => env(
         'LICENSE_PUBLIC_KEY',
         // REPLACE THIS WITH YOUR REAL Ed25519 PUBLIC KEY (base64-encoded, 32 bytes → 44 chars)
-        'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=' // placeholder — set LICENSE_PUBLIC_KEY in .env
+        'hWK6Z300a95a8/BUcrWW+HZ+2CgXiXoAcw+7EdVSkhA==' // placeholder — set LICENSE_PUBLIC_KEY in .env
     ),
 
     /*

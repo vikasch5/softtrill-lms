@@ -214,9 +214,9 @@ final class LicenseVerifier
     private function decodePublicKey(): string
     {
         $key = base64_decode($this->publicKeyBase64, strict: true);
-        if ($key === false || strlen($key) !== SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES) {
+        if ($key === false || strlen($key) !== \SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES) {
             throw new LicenseTamperedException(
-                'Invalid Ed25519 public key. Expected ' . SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES . ' bytes.'
+                'Invalid Ed25519 public key. Expected ' . \SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES . ' bytes.'
             );
         }
         return $key;

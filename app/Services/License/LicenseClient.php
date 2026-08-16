@@ -50,6 +50,7 @@ final class LicenseClient
             'domain'          => $domain,
             'product'         => config('license.product'),
             'php_version'     => PHP_VERSION,
+            'api_credential'  => $apiCredential,
         ];
 
         // For activation, sign with the license key itself (credential not yet registered)
@@ -68,12 +69,14 @@ final class LicenseClient
     public function validate(
         string $installationId,
         string $apiCredential,
-        string $domain
+        string $domain,
+        array  $telemetry = []
     ): array {
         $body = [
             'installation_id' => $installationId,
             'domain'          => $domain,
             'product'         => config('license.product'),
+            'telemetry'       => $telemetry,
         ];
 
         return $this->sendSignedRequest(
@@ -91,11 +94,15 @@ final class LicenseClient
      */
     public function heartbeat(
         string $installationId,
-        string $apiCredential
+        string $apiCredential,
+        array  $telemetry = []
     ): array {
         return $this->sendSignedRequest(
             endpoint: '/api/v1/license/heartbeat',
-            body: ['installation_id' => $installationId],
+            body: [
+                'installation_id' => $installationId,
+                'telemetry'       => $telemetry,
+            ],
             credential: $apiCredential,
             installationId: $installationId
         );
@@ -179,12 +186,13 @@ final class LicenseClient
         try {
             $response = Http::timeout($this->timeout)
                 ->withHeaders([
-                    'X-Softtrill-Sig'     => $signature,
-                    'X-Softtrill-Ts'      => $timestamp,
-                    'X-Softtrill-Nonce'   => $nonce,
-                    'X-Softtrill-Install' => $installationId,
-                    'Accept'              => 'application/json',
-                    'Content-Type'        => 'application/json',
+                    'X-Softtrill-Sig'                => $signature,
+                    'X-Softtrill-Ts'                 => $timestamp,
+                    'X-Softtrill-Nonce'              => $nonce,
+                    'X-Softtrill-Install'            => $installationId,
+                    'X-Softtrill-Install-Credential' => $credential,
+                    'Accept'                         => 'application/json',
+                    'Content-Type'                   => 'application/json',
                 ])
                 ->post($url, $body);
 
@@ -204,6 +212,8 @@ final class LicenseClient
         $message = $response->json('message') ?? $response->body();
 
         Log::warning('[LicenseClient] License server error response', [
+            'full_url'    => $url,
+            'server_url'  => $this->serverUrl,
             'endpoint'    => $endpoint,
             'http_status' => $status,
             'body'        => substr($message, 0, 500),

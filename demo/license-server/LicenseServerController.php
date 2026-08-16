@@ -229,6 +229,50 @@ class LicenseServerController extends Controller
         return response()->json(['status' => 'active', 'ts' => now()->toISOString()]);
     }
 
+    /**
+     * GET or POST /api/v1/license/stats
+     *
+     * Returns statistics for a specific license key.
+     * Request body/query:
+     *   license_key
+     */
+    public function stats(Request $request): JsonResponse
+    {
+        $request->validate([
+            'license_key' => 'required|string',
+        ]);
+
+        $licenseKey = $request->input('license_key');
+
+        $license = DB::table('licenses')->where('license_key', $licenseKey)->first();
+
+        if (!$license) {
+            return response()->json(['error' => 'License not found.'], 404);
+        }
+
+        $activeCount = DB::table('license_activations')
+            ->where('license_id', $license->id)
+            ->where('status', 'active')
+            ->count();
+
+        $inactiveCount = DB::table('license_activations')
+            ->where('license_id', $license->id)
+            ->where('status', '!=', 'active')
+            ->count();
+
+        return response()->json([
+            'ok' => true,
+            'data' => [
+                'license_key'          => $license->license_key,
+                'status'               => $license->status,
+                'max_activations'      => $license->max_activations,
+                'active_activations'   => $activeCount,
+                'inactive_activations' => $inactiveCount,
+                'expires_at'           => $license->expires_at,
+            ]
+        ]);
+    }
+
     // -----------------------------------------------------------------------
     // Private: signing
     // -----------------------------------------------------------------------

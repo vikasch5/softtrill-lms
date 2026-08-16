@@ -29,7 +29,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(LicenseVerifier::class, function ($app) {
             return new LicenseVerifier(
                 publicKeyBase64: config('license.public_key'),
-                expectedKeyId:   config('license.key_id'),
+                expectedKeyId: config('license.key_id'),
                 expectedProduct: config('license.product'),
             );
         });
@@ -38,7 +38,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(LicenseClient::class, function ($app) {
             return new LicenseClient(
                 serverUrl: config('license.server_url'),
-                timeout:   config('license.timeout', 10),
+                timeout: config('license.timeout', 11),
             );
         });
 
@@ -52,9 +52,9 @@ class AppServiceProvider extends ServiceProvider
         // Bind LicenseManager — orchestrator, depends on all three
         $this->app->singleton(LicenseManager::class, function ($app) {
             return new LicenseManager(
-                verifier:             $app->make(LicenseVerifier::class),
-                client:               $app->make(LicenseClient::class),
-                installationManager:  $app->make(InstallationManager::class),
+                verifier: $app->make(LicenseVerifier::class),
+                client: $app->make(LicenseClient::class),
+                installationManager: $app->make(InstallationManager::class),
             );
         });
 
@@ -68,7 +68,7 @@ class AppServiceProvider extends ServiceProvider
         // Bind TamperDetector
         $this->app->singleton(TamperDetector::class, function ($app) {
             return new TamperDetector(
-                verifier:     $app->make(LicenseVerifier::class),
+                verifier: $app->make(LicenseVerifier::class),
                 manifestPath: config('license.manifest_path'),
             );
         });
@@ -158,7 +158,7 @@ class AppServiceProvider extends ServiceProvider
             $activeOffers = collect();
             if ($user) {
                 // Eager load details if not loaded to prevent N+1
-                if (! $user->relationLoaded('details')) {
+                if (!$user->relationLoaded('details')) {
                     $user->load('details');
                 }
 
@@ -166,14 +166,17 @@ class AppServiceProvider extends ServiceProvider
                 $details = $user->details;
 
                 if ($details) {
-                    if ($details->teamleader_id) $allowedUserIds[] = $details->teamleader_id;
-                    if ($details->manager_id) $allowedUserIds[] = $details->manager_id;
-                    if ($details->cluster_id) $allowedUserIds[] = $details->cluster_id;
+                    if ($details->teamleader_id)
+                        $allowedUserIds[] = $details->teamleader_id;
+                    if ($details->manager_id)
+                        $allowedUserIds[] = $details->manager_id;
+                    if ($details->cluster_id)
+                        $allowedUserIds[] = $details->cluster_id;
                 }
 
                 $adminIds = User::role('admin')->pluck('id')->toArray();
                 $allowedUserIds = array_unique(array_merge($allowedUserIds, $adminIds));
-                
+
                 $todayDate = $today->format('Y-m-d');
                 $tenantId = $user->tenant_id ?? $user->id;
 
@@ -181,13 +184,15 @@ class AppServiceProvider extends ServiceProvider
                     ->where('status', 1)
                     ->where('tenant_id', $tenantId)
                     ->whereIn('added_by', $allowedUserIds)
-                    ->where(function($q) use ($todayDate) {
-                        $q->whereNull('start_date')
-                          ->orWhere('start_date', '<=', $todayDate);
+                    ->where(function ($q) use ($todayDate) {
+                        $q
+                            ->whereNull('start_date')
+                            ->orWhere('start_date', '<=', $todayDate);
                     })
-                    ->where(function($q) use ($todayDate) {
-                        $q->whereNull('end_date')
-                          ->orWhere('end_date', '>=', $todayDate);
+                    ->where(function ($q) use ($todayDate) {
+                        $q
+                            ->whereNull('end_date')
+                            ->orWhere('end_date', '>=', $todayDate);
                     })
                     ->latest('id')
                     ->get();
@@ -209,11 +214,23 @@ class AppServiceProvider extends ServiceProvider
      */
     private function verifyApplicationIntegrity(): void
     {
-        if (app()->runningInConsole()) {
+        if (app()->runningInConsole() || request()->is('license-webhook')) {
             return;
         }
 
         try {
+            // Run Tamper Detection in production
+            // It's recommended to skip this in local dev unless explicitly enabled
+            if (!app()->environment('local') || env('ENABLE_TAMPER_DETECTION', false)) {
+                $detector = app(\App\Services\License\TamperDetector::class);
+                if (!$detector->checkIntegrity()) {
+                    // Instantly crash if tampering is detected
+                    throw new \App\Exceptions\License\LicenseTamperedException(
+                        'Application integrity compromised. Please contact support.'
+                    );
+                }
+            }
+
             // LicenseManager::boot() verifies the Ed25519-signed entitlement.
             // It uses a short-lived cache flag to avoid a DB hit on every request.
             app(LicenseManager::class)->boot();

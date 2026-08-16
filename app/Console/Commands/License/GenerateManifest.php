@@ -25,7 +25,7 @@ use Illuminate\Console\Command;
 class GenerateManifest extends Command
 {
     protected $signature = 'softtrill:license:generate-manifest
-                            {--version= : Release version string}
+                            {--release= : Release version string}
                             {--output= : Output path (default: base_path/softtrill.manifest.json)}';
 
     protected $description = 'Generate an unsigned file manifest for tamper detection (sign this on the license server).';
@@ -64,7 +64,7 @@ class GenerateManifest extends Command
 
     public function handle(): int
     {
-        $version = $this->option('version') ?? 'dev-' . date('Ymd');
+        $version = $this->option('release') ?? 'dev-' . date('Ymd');
         $output  = $this->option('output') ?? base_path('softtrill.manifest.json');
 
         $this->info("Generating manifest for version: {$version}");
@@ -112,7 +112,7 @@ class GenerateManifest extends Command
         $this->info("✓ Unsigned manifest written to: {$output}");
         $this->warn('');
         $this->warn('NEXT STEP: Sign this manifest on your Softtrill license server with:');
-        $this->warn('  node sign-manifest.js softtrill.manifest.json');
+        $this->warn('  php artisan softtrill:license:sign-manifest /path/to/softtrill.manifest.json');
         $this->warn('Then include the signed manifest in your distribution package.');
         $this->warn('The "signature" field in the manifest MUST be added by the signing tool.');
 

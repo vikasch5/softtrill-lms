@@ -30,7 +30,40 @@ class AuthController extends Controller
         ]);
 
         if (Auth::attempt($request->only('email', 'password'))) {
+            $user = Auth::user();
+
+            // Enforce license limits for non-admin users at login
+            if (!$user->hasRole('Admin')) {
+                /** @var \App\Services\License\EntitlementManager $entitlement */
+                $entitlement = app(\App\Services\License\EntitlementManager::class);
+                $max = $entitlement->maxUsers();
+
+                if ($max > 0) {
+                    // Get the IDs of the first $max allowed users (by creation date)
+                    $allowedUserIds = User::withoutRole('Admin')
+                        ->orderBy('id', 'asc')
+                        ->limit($max)
+                        ->pluck('id')
+                        ->toArray();
+
+                    if (!in_array($user->id, $allowedUserIds)) {
+                        Auth::logout();
+                        return response()->json([
+                            'status' => false,
+                            'message' => 'Your account is disabled due to a license downgrade. Please contact your administrator.'
+                        ], 403);
+                    }
+                }
+            }
            
+            // Immediately mark user as online so the heartbeat picks it up
+            \Illuminate\Support\Facades\DB::table('users')
+                ->where('id', Auth::id())
+                ->update(['last_activity_at' => now()]);
+
+            // Notify license server that a user came online
+            app(\App\Services\License\LicenseManager::class)->sendHeartbeat();
+
             return response()->json([
                 'status' => true,
                 'redirect' => route('lms.dashboard')
@@ -55,12 +88,53 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        // Touch last_activity_at one last time before logout to ensure it's tracked
+        if (Auth::check()) {
+            \Illuminate\Support\Facades\DB::table('users')
+                ->where('id', Auth::id())
+                ->update(['last_activity_at' => null]); // clear online status immediately
+        }
+
         Auth::logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
+        // Notify license server that a user went offline
+        app(\App\Services\License\LicenseManager::class)->sendHeartbeat();
+
         return redirect()->route('login');
+    }
+
+    public function keepAlive(Request $request)
+    {
+        if (Auth::check()) {
+            $user = Auth::user();
+            $lastActivity = $user->last_activity_at ? \Carbon\Carbon::parse($user->last_activity_at) : null;
+            $wasOffline = !$lastActivity || $lastActivity->diffInMinutes(now()) >= 2;
+
+            \Illuminate\Support\Facades\DB::table('users')
+                ->where('id', $user->id)
+                ->update(['last_activity_at' => now()]);
+                
+            if ($wasOffline || !\Illuminate\Support\Facades\Cache::has('license_heartbeat_sent')) {
+                \Illuminate\Support\Facades\Cache::put('license_heartbeat_sent', true, 60);
+                app(\App\Services\License\LicenseManager::class)->sendHeartbeat();
+            }
+        }
+        return response()->json(['status' => 'ok']);
+    }
+
+    public function markOffline(Request $request)
+    {
+        if (Auth::check()) {
+            \Illuminate\Support\Facades\DB::table('users')
+                ->where('id', Auth::id())
+                ->update(['last_activity_at' => null]);
+                
+            app(\App\Services\License\LicenseManager::class)->sendHeartbeat();
+        }
+        return response()->json(['status' => 'ok']);
     }
 
     public function sendOtp(Request $request)
