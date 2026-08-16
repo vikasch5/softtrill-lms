@@ -192,6 +192,9 @@ final class EntitlementManager
             return;
         }
 
+        // Lock the installation record to serialize user creation and prevent race conditions
+        \App\Models\LicenseInstallation::lockForUpdate()->first();
+
         // This count must happen inside the same DB transaction as user creation
         $current = $this->currentUserCount();
 
@@ -228,6 +231,40 @@ final class EntitlementManager
             return false;
         } catch (\Throwable) {
             return false; // fail closed
+        }
+    }
+
+    /**
+     * Thread-safe check: can this user log in right now?
+     * @throws UserLimitExceededException
+     */
+    public function assertCanLogin(\App\Models\User $user): void
+    {
+        if ($user->hasRole('Admin')) {
+            return; // Admins are immune to quota
+        }
+
+        $maxOnline = (int) ($this->payload()['max_online_users'] ?? 0);
+        if ($maxOnline === 0) {
+            return; // 0 means unlimited
+        }
+
+        // Count how many users have been active in the last 2 minutes
+        // Exclude the user currently trying to log in (in case they are already counted)
+        $currentOnline = \App\Models\User::withoutRole('Admin')
+            ->where('id', '!=', $user->id)
+            ->where('last_activity_at', '>=', now()->subMinutes(2))
+            ->count();
+
+        if ($currentOnline >= $maxOnline) {
+            Log::warning('[EntitlementManager] Max simultaneous logins reached.', [
+                'max' => $maxOnline,
+                'current' => $currentOnline,
+                'user_id' => $user->id,
+            ]);
+            throw new UserLimitExceededException(
+                "Maximum simultaneous active users ({$maxOnline}) reached. Please try again later."
+            );
         }
     }
 

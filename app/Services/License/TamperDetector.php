@@ -142,6 +142,15 @@ final class TamperDetector
             throw new \RuntimeException('Manifest has no signature.');
         }
 
+        if (($manifest['manifest_version'] ?? 0) < 1) {
+            throw new \RuntimeException('Unsupported manifest version.');
+        }
+
+        $expectedKeyVersion = config('license.active_key_version', 1);
+        if (($manifest['key_version'] ?? 0) !== $expectedKeyVersion) {
+            throw new \RuntimeException('Manifest key_version mismatch. Possible downgrade attack.');
+        }
+
         // Remove the signature field to reproduce what was signed
         $toVerify = $manifest;
         unset($toVerify['signature']);

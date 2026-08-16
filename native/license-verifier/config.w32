@@ -1,0 +1,5 @@
+ARG_ENABLE("softtrill_license", "enable softtrill_license support", "no");
+
+if (PHP_SOFTTRILL_LICENSE != "no") {
+    EXTENSION("softtrill_license", "softtrill_license.c");
+}

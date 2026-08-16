@@ -98,15 +98,21 @@ class GenerateManifest extends Command
         }
 
         $manifest = [
-            'version'    => $version,
-            'release_id' => \Illuminate\Support\Str::uuid()->toString(),
-            'product'    => config('license.product', 'softtrill-lms'),
-            'issued_at'  => now()->toISOString(),
-            'files'      => $files,
+            'manifest_version' => 1,
+            'release_version'  => $version,
+            'release_id'       => \Illuminate\Support\Str::uuid()->toString(),
+            'product'          => config('license.product', 'softtrill-lms'),
+            'generated_at'     => now()->toISOString(),
+            'algorithm'        => 'sha256',
+            'key_version'      => 1, // Phase 8 & 9 prep
+            'protected_files'  => array_keys($files),
+            'files'            => $files,
             // 'signature' field is NOT included here — it must be added by the
             // license server's signing tool using the Ed25519 private key.
         ];
 
+        // Ensure canonical sorting before writing
+        ksort($manifest);
         $json = json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         file_put_contents($output, $json);
 

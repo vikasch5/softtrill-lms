@@ -25,12 +25,29 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Bind LicenseVerifier as a singleton — stateless, no side-effects
+        // Bind the native vs PHP verification provider dynamically
+        $this->app->singleton(\App\Services\License\Contracts\LicenseVerificationProviderInterface::class, function ($app) {
+            // In production, we strictly require the native provider unless explicitly bypassed (which throws exception anyway)
+            // But if native_required is false (like in local dev), we can use the PHP provider.
+            if (config('app.env') === 'production' && config('license.native_required', true)) {
+                return new \App\Services\License\Providers\NativeLicenseVerificationProvider();
+            }
+            
+            // If the native extension is loaded even in dev, prefer it
+            if (extension_loaded('softtrill_license')) {
+                return new \App\Services\License\Providers\NativeLicenseVerificationProvider();
+            }
+
+            return new \App\Services\License\Providers\PhpLicenseVerificationProvider();
+        });
+
+        // Bind LicenseVerifier — pure cryptographic verification
         $this->app->singleton(LicenseVerifier::class, function ($app) {
             return new LicenseVerifier(
                 publicKeyBase64: config('license.public_key'),
                 expectedKeyId: config('license.key_id'),
                 expectedProduct: config('license.product'),
+                verificationProvider: $app->make(\App\Services\License\Contracts\LicenseVerificationProviderInterface::class),
             );
         });
 
@@ -55,6 +72,7 @@ class AppServiceProvider extends ServiceProvider
                 verifier: $app->make(LicenseVerifier::class),
                 client: $app->make(LicenseClient::class),
                 installationManager: $app->make(InstallationManager::class),
+                clockGuard: $app->make(\App\Services\License\ClockGuard::class),
             );
         });
 

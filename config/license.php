@@ -100,4 +100,13 @@ return [
     */
     'manifest_path' => base_path('softtrill.manifest.json'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Native Verification
+    |--------------------------------------------------------------------------
+    | If true, the application will refuse to run in production without the
+    | softtrill_license native C extension loaded.
+    */
+    'native_required' => env('LICENSE_NATIVE_REQUIRED', true),
+
 ];

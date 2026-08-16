@@ -17,9 +17,9 @@ class UpdateUserActivity
         if (Auth::check()) {
             $user = Auth::user();
             
-            // Throttle updates to once every 2 minutes to prevent DB hammering
+            // Throttle updates to once every 1 minute to prevent DB hammering
             $lastActivity = $user->last_activity_at ? \Carbon\Carbon::parse($user->last_activity_at) : null;
-            $wasOffline = !$lastActivity || $lastActivity->diffInMinutes(now()) >= 2;
+            $wasOffline = !$lastActivity || $lastActivity->diffInMinutes(now()) >= 1;
             
             if ($wasOffline) {
                 // Use DB facade to avoid triggering eloquent events like updated_at on the whole model

@@ -205,7 +205,9 @@ final class LicenseClient
         }
 
         if ($response->successful()) {
-            return $response->json() ?? [];
+            $data = $response->json() ?? [];
+            $data['_client_nonce_sent'] = $nonce;
+            return $data;
         }
 
         $status  = $response->status();

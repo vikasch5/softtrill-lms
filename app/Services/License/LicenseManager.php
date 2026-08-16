@@ -45,6 +45,7 @@ final class LicenseManager
         private readonly LicenseVerifier    $verifier,
         private readonly LicenseClient      $client,
         private readonly InstallationManager $installationManager,
+        private readonly ClockGuard         $clockGuard,
     ) {}
 
     // -----------------------------------------------------------------------
@@ -126,6 +127,9 @@ final class LicenseManager
 
         // Check payload-level status
         $this->assertPayloadStatus($payload, $installation->installation_id);
+
+        // Check clock for rollback
+        $this->clockGuard->checkClock($installation, $payload);
 
         // Check if license has expired in the payload
         $expiresAt = Carbon::parse($payload['expires_at']);
@@ -284,6 +288,8 @@ final class LicenseManager
             );
 
             $signedPayload = $response['signed_payload'] ?? null;
+            $clientNonceSent = $response['_client_nonce_sent'] ?? null;
+
             if (empty($signedPayload)) {
                 throw new \RuntimeException('License server returned no signed_payload.');
             }
@@ -299,6 +305,12 @@ final class LicenseManager
                 expectedInstallationId: $installation->installation_id,
                 expectedDomain: $installation->domain
             );
+
+            if ($clientNonceSent && ($payload['client_nonce'] ?? '') !== $clientNonceSent) {
+                throw new LicenseTamperedException('Replay detected: Nonce mismatch in server response.');
+            }
+
+            $this->clockGuard->checkClock($installation, $payload);
 
             LicenseSecurityLog::record(
                 LicenseSecurityLog::EVENT_VALIDATION_SUCCESS,
@@ -372,16 +384,17 @@ final class LicenseManager
     private function assertPayloadStatus(array $payload, string $installationId): void
     {
         $status = $payload['status'] ?? 'unknown';
+        $revocationStatus = $payload['revocation_status'] ?? 'active';
 
         match (true) {
-            $status === 'revoked' || $status === 'suspended' => (function () use ($status, $installationId) {
+            $status === 'revoked' || $status === 'suspended' || $revocationStatus !== 'active' => (function () use ($status, $revocationStatus, $installationId) {
                 LicenseSecurityLog::record(
                     LicenseSecurityLog::EVENT_LICENSE_REVOKED,
                     LicenseSecurityLog::SEVERITY_CRITICAL,
-                    ['status' => $status],
+                    ['status' => $status, 'revocation_status' => $revocationStatus],
                     $installationId
                 );
-                throw new LicenseRevokedException("License status is: {$status}");
+                throw new LicenseRevokedException("License revoked or suspended. Status: {$status}, Revocation: {$revocationStatus}");
             })(),
             $status !== 'active' => (function () use ($status, $installationId) {
                 LicenseSecurityLog::record(

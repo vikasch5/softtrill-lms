@@ -40,10 +40,11 @@ abstract class LicenseTestCase extends TestCase
         config(['license.product'    => 'softtrill-lms']);
 
         // Rebind LicenseVerifier with test key
-        $this->app->singleton(LicenseVerifier::class, fn() => new LicenseVerifier(
+        $this->app->singleton(LicenseVerifier::class, fn($app) => new LicenseVerifier(
             publicKeyBase64: $this->testPublicKey,
             expectedKeyId:   'test-kid-001',
             expectedProduct: 'softtrill-lms',
+            verificationProvider: new \App\Services\License\Providers\PhpLicenseVerificationProvider(),
         ));
     }
 

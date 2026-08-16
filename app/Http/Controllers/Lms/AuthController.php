@@ -54,6 +54,17 @@ class AuthController extends Controller
                         ], 403);
                     }
                 }
+
+                // Check online user limit
+                try {
+                    $entitlement->assertCanLogin($user);
+                } catch (\App\Exceptions\License\UserLimitExceededException $e) {
+                    Auth::logout();
+                    return response()->json([
+                        'status' => false,
+                        'message' => $e->getMessage()
+                    ], 403);
+                }
             }
            
             // Immediately mark user as online so the heartbeat picks it up
@@ -111,7 +122,7 @@ class AuthController extends Controller
         if (Auth::check()) {
             $user = Auth::user();
             $lastActivity = $user->last_activity_at ? \Carbon\Carbon::parse($user->last_activity_at) : null;
-            $wasOffline = !$lastActivity || $lastActivity->diffInMinutes(now()) >= 2;
+            $wasOffline = !$lastActivity || $lastActivity->diffInMinutes(now()) >= 1;
 
             \Illuminate\Support\Facades\DB::table('users')
                 ->where('id', $user->id)

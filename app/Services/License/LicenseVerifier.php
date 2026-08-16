@@ -5,6 +5,8 @@ namespace App\Services\License;
 use App\Exceptions\License\LicenseTamperedException;
 use Carbon\Carbon;
 
+use App\Services\License\Contracts\LicenseVerificationProviderInterface;
+
 /**
  * LicenseVerifier — pure cryptographic verification layer.
  *
@@ -15,7 +17,7 @@ use Carbon\Carbon;
  * All values used for entitlement decisions MUST pass through this class.
  * Do not trust any value that has not been verified by verifySignedPayload().
  *
- * Algorithm: Ed25519 (via PHP libsodium).
+ * Algorithm: Ed25519 (via Verification Provider).
  *
  * Signed payload format:
  *   base64( 64_byte_ed25519_signature + utf8_canonical_json_payload )
@@ -29,23 +31,29 @@ final class LicenseVerifier
 
     /** Minimum expected fields in a valid license payload */
     private const REQUIRED_FIELDS = [
+        'schema_version',
         'license_id',
         'customer_id',
         'product',
         'installation_id',
         'domain',
         'status',
+        'revocation_status',
         'issued_at',
+        'server_time',
         'expires_at',
+        'grace_until',
         'max_users',
-        'license_version',
+        'key_version',
         'key_id',
+        'entitlement_version',
     ];
 
     public function __construct(
         private readonly string $publicKeyBase64,
         private readonly string $expectedKeyId,
         private readonly string $expectedProduct,
+        private readonly LicenseVerificationProviderInterface $verificationProvider,
     ) {}
 
     /**
@@ -80,11 +88,10 @@ final class LicenseVerifier
         $signature   = substr($raw, 0, self::SIGNATURE_BYTES);
         $messageJson = substr($raw, self::SIGNATURE_BYTES);
 
-        // 4. Verify Ed25519 signature
-        // sodium_crypto_sign_verify_detached returns bool
+        // 4. Verify Ed25519 signature via native/php provider
         try {
-            $valid = sodium_crypto_sign_verify_detached($signature, $messageJson, $publicKey);
-        } catch (\SodiumException $e) {
+            $valid = $this->verificationProvider->verifyEd25519($messageJson, $signature, $publicKey);
+        } catch (\Exception $e) {
             throw new LicenseTamperedException('Signature verification error: ' . $e->getMessage());
         }
 
@@ -120,9 +127,9 @@ final class LicenseVerifier
             throw new LicenseTamperedException('License domain does not match this installation domain.');
         }
 
-        // 11. Validate license version
-        if (($payload['license_version'] ?? 0) < 1) {
-            throw new LicenseTamperedException('Unsupported license version.');
+        // 11. Validate schema version
+        if (($payload['schema_version'] ?? 0) < 1) {
+            throw new LicenseTamperedException('Unsupported license schema version.');
         }
 
         return $payload;
@@ -149,8 +156,8 @@ final class LicenseVerifier
         $messageJson = substr($raw, self::SIGNATURE_BYTES);
 
         try {
-            $valid = sodium_crypto_sign_verify_detached($signature, $messageJson, $publicKey);
-        } catch (\SodiumException $e) {
+            $valid = $this->verificationProvider->verifyEd25519($messageJson, $signature, $publicKey);
+        } catch (\Exception $e) {
             throw new LicenseTamperedException('Signature error: ' . $e->getMessage());
         }
 

@@ -20,6 +20,8 @@ class LicenseInstallation extends Model
         'activated_at',
         'last_validated_at',
         'grace_expires_at',
+        'last_server_time',
+        'last_successful_validation_at',
     ];
 
     protected $casts = [
