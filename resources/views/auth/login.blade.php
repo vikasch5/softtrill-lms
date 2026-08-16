@@ -301,6 +301,11 @@
                                 $('#loginError').removeClass('d-none').text(
                                     'Invalid email or password');
                             }
+                            
+                            if (xhr.status === 403) {
+                                $('#loginError').removeClass('d-none').text(
+                                    xhr.responseJSON.message || 'Access denied');
+                            }
 
                             if (xhr.status === 422) {
 

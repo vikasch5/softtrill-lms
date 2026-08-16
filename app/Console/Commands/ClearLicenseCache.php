@@ -2,32 +2,24 @@
 
 namespace App\Console\Commands;
 
-use App\Services\LicenseService;
+use App\Services\License\LicenseManager;
 use Illuminate\Console\Command;
 
 class ClearLicenseCache extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'license:clear-cache';
+    protected $description = 'Clear the cached license validation status so the next request re-verifies immediately.';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Clear the cached license status so the next request re-verifies with softtrill.com immediately.';
+    public function __construct(private readonly LicenseManager $licenseManager)
+    {
+        parent::__construct();
+    }
 
-    /**
-     * Execute the console command.
-     */
     public function handle(): int
     {
-        LicenseService::clearCache();
-        $this->info('License cache cleared. The next request will re-verify with softtrill.com.');
+        $this->licenseManager->clearCache();
+        $this->info('License cache cleared. The next request will re-verify the signed entitlement.');
+        $this->line('To force a full server re-validation, run: php artisan softtrill:license:refresh');
         return Command::SUCCESS;
     }
 }

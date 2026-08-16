@@ -67,6 +67,25 @@
    <script src="{{ asset('vendor/flasher/sweetalert2.min.js')}}"></script>
    <script src="{{ asset('vendor/flasher/flasher-sweetalert.min.js')}}"></script>
    @yield('scripts')
+   <script>
+       // Send a keep-alive ping every minute so the server knows the user is still active
+       setInterval(function() {
+           fetch('{{ route("lms.keep-alive") }}', {
+               method: 'POST',
+               headers: {
+                   'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                   'Content-Type': 'application/json'
+               }
+           }).catch(() => {}); 
+       }, 60000);
+       
+       // Attempt to mark offline immediately when tab closes
+       window.addEventListener('beforeunload', function () {
+           let formData = new FormData();
+           formData.append('_token', '{{ csrf_token() }}');
+           navigator.sendBeacon('{{ route("lms.mark-offline") }}', formData);
+       });
+   </script>
 </div>
 </body>
 </html>

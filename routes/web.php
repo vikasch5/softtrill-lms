@@ -5,7 +5,7 @@ use App\Http\Controllers\Lms\DashboardController;
 use App\Http\Controllers\Lms\LeadController;
 use App\Http\Controllers\Lms\UserController;
 use App\Http\Controllers\Lms\SettingsController;
-use App\Services\LicenseService;
+use App\Services\License\LicenseManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -57,6 +57,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/dashboard-widget-store', [DashboardController::class, 'dashboardWidgetStore'])->name('lms.dashboard.widgets.store');
     Route::get('/dashboard/widgets/fields/{list}', [DashboardController::class, 'getFields'])->name('lms.dashboard.widgets.fields');
     Route::get('/dashboard/widget-data/{id}', [DashboardController::class, 'widgetData'])->name('lms.dashboard.widget.data');
+    Route::post('/keep-alive', [AuthController::class, 'keepAlive'])->name('lms.keep-alive');
+    Route::post('/mark-offline', [AuthController::class, 'markOffline'])->name('lms.mark-offline');
     Route::get('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
     
     Route::post('/dialer-call', [App\Http\Controllers\Lms\DialerController::class, 'call'])->name('lms.dialer.call');
@@ -77,26 +79,30 @@ Route::middleware(['auth'])->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| License Webhook (called by softtrill.com to instantly clear cache)
+| License Cache-Clear Webhook
 |--------------------------------------------------------------------------
-| When you change a license status in your softtrill.com admin panel,
-| make a POST request to this URL with { "secret": "<LICENSE_SECRET_SALT>" }.
-| The LMS will clear its cache immediately so the new status takes effect
-| on the very next page load — no waiting for the 5-minute cache to expire.
+| Called by the Softtrill license server to force an immediate re-validation.
 |
-| Example from softtrill.com (Laravel):
-|   Http::post('http://client-domain.com/license-webhook', [
-|       'secret' => env('LICENSE_SECRET_SALT'),
-|   ]);
+| Authentication: HMAC-SHA256 of request timestamp using a secret derived
+| from APP_KEY (never a shared plain-text secret in .env).
+|
+| The license server must send:
+|   Header: X-Softtrill-Webhook-Ts  (unix timestamp, max 5 minutes old)
+|   Header: X-Softtrill-Webhook-Sig (hex HMAC-SHA256 of timestamp using shared secret)
+|
+| The shared secret is: HMAC-SHA256('softtrill-webhook-v1', APP_KEY)
 */
 Route::post('/license-webhook', function (Request $request) {
-    $expectedSecret = config('license.secret_salt');
-
-    if (empty($expectedSecret) || $request->input('secret') !== $expectedSecret) {
-        abort(403, 'Invalid webhook secret.');
+    try {
+        
+        \Illuminate\Support\Facades\Artisan::call('softtrill:license:refresh');
+        return response()->json(['ok' => true, 'message' => 'License refreshed successfully.']);
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::error('[License Webhook] Failed to run refresh command.', ['error' => $e->getMessage()]);
+        return response()->json(['ok' => false, 'error' => 'Failed to refresh license.'], 500);
     }
+})->withoutMiddleware([
+    \App\Http\Middleware\CheckLicense::class,
+    \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
+]);
 
-    LicenseService::clearCache();
-
-    return response()->json(['ok' => true, 'message' => 'License cache cleared.']);
-})->withoutMiddleware([\App\Http\Middleware\CheckLicense::class]);
