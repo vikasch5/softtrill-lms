@@ -68,18 +68,30 @@
    <script src="{{ asset('vendor/flasher/flasher-sweetalert.min.js')}}"></script>
    @yield('scripts')
    <script>
-       // Send a keep-alive ping every minute so the server knows the user is still active
-       setInterval(function() {
+       function sendKeepAlive() {
            fetch('{{ route("lms.keep-alive") }}', {
                method: 'POST',
                headers: {
                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
                    'Content-Type': 'application/json'
                }
-           }).catch(() => {}); 
-       }, 60000);
+           }).catch(() => {});
+       }
+
+       // Send immediately on page load to restore online status after navigation
+       sendKeepAlive();
+
+       // Send a keep-alive ping every minute so the server knows the user is still active
+       setInterval(sendKeepAlive, 60000);
        
-       // Attempt to mark offline immediately when tab closes
+       // Send immediately when the user switches back to this tab
+       document.addEventListener("visibilitychange", () => {
+           if (document.visibilityState === "visible") {
+               sendKeepAlive();
+           }
+       });
+
+       // Attempt to mark offline immediately when tab closes or navigates away
        window.addEventListener('beforeunload', function () {
            let formData = new FormData();
            formData.append('_token', '{{ csrf_token() }}');
