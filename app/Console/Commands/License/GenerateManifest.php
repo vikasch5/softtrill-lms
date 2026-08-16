@@ -26,7 +26,9 @@ class GenerateManifest extends Command
 {
     protected $signature = 'softtrill:license:generate-manifest
                             {--release= : Release version string}
-                            {--output= : Output path (default: base_path/softtrill.manifest.json)}';
+                            {--output= : Output path (default: base_path/softtrill.manifest.json)}
+                            {--auto-sign : Automatically sign the manifest using the License Server}
+                            {--token= : The authentication token for the license server}';
 
     protected $description = 'Generate an unsigned file manifest for tamper detection (sign this on the license server).';
 
@@ -108,13 +110,51 @@ class GenerateManifest extends Command
         $json = json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         file_put_contents($output, $json);
 
-        $this->info('');
-        $this->info("✓ Unsigned manifest written to: {$output}");
-        $this->warn('');
-        $this->warn('NEXT STEP: Sign this manifest on your Softtrill license server with:');
-        $this->warn('  php artisan softtrill:license:sign-manifest /path/to/softtrill.manifest.json');
-        $this->warn('Then include the signed manifest in your distribution package.');
-        $this->warn('The "signature" field in the manifest MUST be added by the signing tool.');
+        if ($this->option('auto-sign')) {
+            $this->info("Attempting to auto-sign via License Server...");
+            
+            $serverUrl = rtrim(env('LICENSE_SERVER_URL'), '/');
+            $secret = $this->option('token');
+            
+            if (empty($serverUrl)) {
+                $this->error("Auto-sign failed: LICENSE_SERVER_URL is missing in .env");
+                return self::FAILURE;
+            }
+
+            if (empty($secret)) {
+                $this->error("Auto-sign failed: You must provide the --token=YOUR_SECRET flag to authenticate with the License Server.");
+                return self::FAILURE;
+            }
+
+            try {
+                $response = \Illuminate\Support\Facades\Http::withToken($secret)
+                    ->post("{$serverUrl}/api/manifest/sign", [
+                        'manifest' => $manifest
+                    ]);
+                
+                if ($response->successful() && $response->json('success')) {
+                    $signedManifest = $response->json('signed_manifest');
+                    $signedJson = json_encode($signedManifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                    file_put_contents($output, $signedJson);
+                    
+                    $this->info('');
+                    $this->info("✓ Manifest successfully automatically signed by License Server: {$output}");
+                } else {
+                    $this->error("Failed to sign manifest: " . $response->body());
+                    return self::FAILURE;
+                }
+            } catch (\Exception $e) {
+                $this->error("Error communicating with License Server: " . $e->getMessage());
+                return self::FAILURE;
+            }
+        } else {
+            $this->info('');
+            $this->info("✓ Unsigned manifest written to: {$output}");
+            $this->warn('');
+            $this->warn('NEXT STEP: Sign this manifest on your Softtrill license server with:');
+            $this->warn('  php artisan softtrill:license:sign-manifest /path/to/softtrill.manifest.json');
+            $this->warn('Or pass the --auto-sign flag to sign automatically.');
+        }
 
         return self::SUCCESS;
     }
