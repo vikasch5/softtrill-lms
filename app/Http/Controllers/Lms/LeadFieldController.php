@@ -111,6 +111,8 @@ class LeadFieldController extends Controller
 
             $listId = $list->id;
 
+            $submittedFieldIds = [];
+
             foreach ($request->fields as $field) {
                 if (empty(trim($field['name'] ?? ''))) {
                     continue;
@@ -155,7 +157,7 @@ class LeadFieldController extends Controller
                         : json_encode($options);
                 }
 
-                LeadField::updateOrCreate(
+                $savedField = LeadField::updateOrCreate(
                     [
                         'id' => $field['id'] ?? null,
                     ],
@@ -174,6 +176,18 @@ class LeadFieldController extends Controller
                         'sort_order' => (int) ($field['sort_order'] ?? 0),
                     ]
                 );
+
+                $submittedFieldIds[] = $savedField->id;
+            }
+
+            // Remove any fields that were deleted from the UI
+            if (!empty($submittedFieldIds)) {
+                LeadField::where('list_id', $listId)
+                    ->whereNotIn('id', $submittedFieldIds)
+                    ->delete();
+            } else {
+                // If all fields were removed
+                LeadField::where('list_id', $listId)->delete();
             }
 
             DB::commit();
