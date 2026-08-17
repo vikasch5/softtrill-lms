@@ -27,13 +27,13 @@
                         </button>
                     @endrole
                     @role('Admin|Cluster')
-                        <a href="{{ request()->filled('list_id') ? route('lms.leads.download', ['list_id' => request('list_id')]) : '#' }}"
+                        <button type="button" 
                             class="btn btn-outline-success"
-                            id="downloadLeadList"
+                            id="openDownloadModalBtn"
                             data-download-url="{{ route('lms.leads.download') }}">
                             <i class="ri-download-2-line"></i>
                             Download List
-                        </a>
+                        </button>
                     @endrole
 
                     @role('Admin|Manager|Cluster')
@@ -63,7 +63,12 @@
                             || request()->filled('name')
                             || request()->filled('phone_number')
                             || request()->filled('email')
-                            || request()->filled('status')
+                            || request()->filled('feedback_id')
+                            || request()->filled('followup_status')
+                            || request()->filled('followup_from')
+                            || request()->filled('followup_to')
+                            || request()->filled('created_from')
+                            || request()->filled('created_to')
                             || collect(request('filters', []))->flatten()->filter(fn($value) => $value !== null && $value !== '')->isNotEmpty();
                     @endphp
 
@@ -114,28 +119,58 @@
                                             placeholder="Search by name">
                                     </div>
 
-                                    <div class="col-md-2">
+                                    <div class="col-md-3">
                                         <label class="form-label fw-semibold">Phone</label>
                                         <input type="text" name="phone_number" value="{{ request('phone_number') }}" class="form-control"
                                             placeholder="Phone number">
                                     </div>
 
-                                    <div class="col-md-2">
+                                    <div class="col-md-3">
                                         <label class="form-label fw-semibold">Email</label>
                                         <input type="text" name="email" value="{{ request('email') }}" class="form-control"
                                             placeholder="Email">
                                     </div>
 
-                                    <div class="col-md-2">
-                                        <label class="form-label fw-semibold">Status</label>
-                                        <select name="status" class="form-select">
-                                            <option value="">All Status</option>
-                                            @foreach(['new', 'contacted', 'qualified', 'interested', 'followup'] as $status)
-                                                <option value="{{ $status }}" {{ request('status') === $status ? 'selected' : '' }}>
-                                                    {{ ucfirst($status) }}
+                                    <div class="col-md-3">
+                                        <label class="form-label fw-semibold">Feedback</label>
+                                        <select name="feedback_id" class="form-select">
+                                            <option value="">All Feedbacks</option>
+                                            @foreach($feedbacks as $feedback)
+                                                <option value="{{ $feedback->id }}" {{ request('feedback_id') == $feedback->id ? 'selected' : '' }}>
+                                                    {{ ucfirst($feedback->name) }}
                                                 </option>
                                             @endforeach
                                         </select>
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <label class="form-label fw-semibold">Followup Status</label>
+                                        <select name="followup_status" class="form-select">
+                                            <option value="">All Followups</option>
+                                            <option value="today" {{ request('followup_status') === 'today' ? 'selected' : '' }}>Today</option>
+                                            <option value="pending" {{ request('followup_status') === 'pending' ? 'selected' : '' }}>Pending</option>
+                                            <option value="upcoming" {{ request('followup_status') === 'upcoming' ? 'selected' : '' }}>Upcoming</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <label class="form-label fw-semibold">Followup From</label>
+                                        <input type="date" name="followup_from" value="{{ request('followup_from') }}" class="form-control">
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <label class="form-label fw-semibold">Followup To</label>
+                                        <input type="date" name="followup_to" value="{{ request('followup_to') }}" class="form-control">
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <label class="form-label fw-semibold">Created From</label>
+                                        <input type="date" name="created_from" value="{{ request('created_from') }}" class="form-control">
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <label class="form-label fw-semibold">Created To</label>
+                                        <input type="date" name="created_to" value="{{ request('created_to') }}" class="form-control">
                                     </div>
 
                                     @foreach($filterableFields as $field)
@@ -452,6 +487,117 @@
         </div>
     </div>
 
+    <style>
+        .export-modal-header {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-bottom: none;
+            padding: 1.25rem 1.5rem;
+            border-radius: calc(0.375rem - 1px) calc(0.375rem - 1px) 0 0;
+        }
+        .export-modal-title {
+            font-weight: 600;
+            font-size: 1.15rem;
+            color: #2b3445;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0;
+        }
+        .export-modal-body {
+            padding: 1.5rem;
+        }
+        .export-card {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            padding: 1.25rem;
+            border: 2px solid #eef1f5;
+            border-radius: 12px;
+            background: #ffffff;
+            text-align: left;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            width: 100%;
+            text-decoration: none;
+        }
+        .export-card:hover {
+            border-color: #0d6efd;
+            background: #f8fbff;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(13, 110, 253, 0.08);
+        }
+        .export-card.dialer:hover {
+            border-color: #198754;
+            background: #f8fff9;
+            box-shadow: 0 8px 24px rgba(25, 135, 84, 0.08);
+        }
+        .export-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+        .export-icon.full {
+            background: #eef4ff;
+            color: #0d6efd;
+        }
+        .export-icon.dialer {
+            background: #eaffe5;
+            color: #198754;
+        }
+        .export-details h6 {
+            margin: 0 0 0.25rem 0;
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #2b3445;
+        }
+        .export-details p {
+            margin: 0;
+            font-size: 0.85rem;
+            color: #7d879c;
+            line-height: 1.4;
+        }
+    </style>
+
+    <!-- Export Options Modal -->
+    <div class="modal fade" id="exportLeadsModal" tabindex="-1" aria-labelledby="exportLeadsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                <div class="modal-header export-modal-header">
+                    <h5 class="modal-title export-modal-title" id="exportLeadsModalLabel">
+                        <i class="ri-download-cloud-2-line text-primary"></i> Export Leads
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body export-modal-body">
+                    <p class="text-muted mb-4" style="font-size: 0.95rem;">Choose your preferred export format. Active filters will be applied automatically.</p>
+                    
+                    <div class="d-flex flex-column gap-3">
+                        <button type="button" class="export-card export-option-btn" data-export-type="full">
+                            <div class="export-icon full"><i class="ri-file-excel-2-line"></i></div>
+                            <div class="export-details">
+                                <h6>Full List Export</h6>
+                                <p>Includes all standard fields, custom form data, and your complete followup history.</p>
+                            </div>
+                        </button>
+                        
+                        <button type="button" class="export-card dialer export-option-btn" data-export-type="dialer">
+                            <div class="export-icon dialer"><i class="ri-phone-line"></i></div>
+                            <div class="export-details">
+                                <h6>Dialer Export</h6>
+                                <p>Streamlined layout optimized for dialers. Excludes custom fields and past/upcoming followups.</p>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @section('scripts')
@@ -460,15 +606,17 @@
             const assignLeadModal = new bootstrap.Modal(document.getElementById('assignLeadModal'));
 
             $('#downloadLeadList').on('click', function (event) {
+                event.preventDefault();
                 const listId = $('select[name="list_id"]').val();
 
                 if (!listId) {
-                    event.preventDefault();
                     notify_it('error', 'Please select a list from Lead Filters before downloading.');
                     return;
                 }
 
-                $(this).attr('href', $(this).data('download-url') + '?list_id=' + encodeURIComponent(listId));
+                const form = $('form.mb-4');
+                const params = form.serialize();
+                window.location.href = $(this).data('download-url') + '?' + params;
             });
 
             let assignableUsersXhr = null;
@@ -719,6 +867,40 @@
                         .html('<i class="ri-phone-line"></i>');
                 }
             });
+        });
+        // ─────────────────────────────────────────────────────────────────────────
+
+        // ─── Export Leads Modal ──────────────────────────────────────────────────
+        $(document).on('click', '#openDownloadModalBtn', function (e) {
+            e.preventDefault();
+            
+            // Check if list is selected (or if we have a default validation)
+            const listId = $('select[name="list_id"]').val();
+            if (!listId) {
+                notify_it('warning', 'Please select a List from the filters before downloading.');
+                return;
+            }
+            
+            $('#exportLeadsModal').modal('show');
+        });
+
+        $(document).on('click', '.export-option-btn', function (e) {
+            e.preventDefault();
+            
+            const exportType = $(this).data('export-type');
+            const baseUrl = $('#openDownloadModalBtn').data('download-url');
+            
+            // Gather current form data
+            const formData = $('.card-body form').serialize();
+            
+            // Append export type
+            const downloadUrl = baseUrl + '?' + formData + '&export_type=' + exportType;
+            
+            // Close modal
+            $('#exportLeadsModal').modal('hide');
+            
+            // Trigger download
+            window.location.href = downloadUrl;
         });
         // ─────────────────────────────────────────────────────────────────────────
     </script>

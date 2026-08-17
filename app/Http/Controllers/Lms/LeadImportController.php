@@ -152,18 +152,29 @@ class LeadImportController extends Controller
                 ]);
 
                 $sortOrder = 1;
+                $standardColumns = [
+                    'name',
+                    'email', 'email_id', 'email_address', 'mail',
+                    'phone_number', 'phone', 'mobile_number', 'mobile', 'mobile_no', 'contact_number', 'contact_no', 'contact'
+                ];
 
                 foreach ($headers as $header) {
+                    $slug = Str::slug($header, '_');
+
+                    if (in_array($slug, $standardColumns)) {
+                        continue;
+                    }
+
                     LeadField::create([
                         'added_by' => auth()->id(),
                         'tenant_id' => $tenantId,
                         'list_id' => $list->id,
                         'name' => ucwords(str_replace('_', ' ', $header)),
-                        'slug' => Str::slug($header, '_'),
+                        'slug' => $slug,
                         'type' => 'text',
                         'is_required' => 0,
-                        'is_filterable' => 1,
-                        'is_searchable' => 1,
+                        'is_filterable' => 0,
+                        'is_searchable' => 0,
                         'is_unique' => 0,
                         'sort_order' => $sortOrder++,
                     ]);

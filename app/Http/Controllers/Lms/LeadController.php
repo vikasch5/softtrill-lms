@@ -59,8 +59,10 @@ class LeadController extends Controller
             $query->where('list_id', $request->list_id);
         }
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
+        if ($request->filled('feedback_id')) {
+            $query->whereHas('leadFeedback', function ($q) use ($request) {
+                $q->where('feedback_id', $request->feedback_id);
+            });
         }
 
         if ($request->filled('name')) {
@@ -84,6 +86,22 @@ class LeadController extends Controller
             } elseif ($request->followup_status === 'upcoming') {
                 $query->where('next_followup_at', '>', $today->copy()->endOfDay());
             }
+        }
+
+        if ($request->filled('created_from')) {
+            $query->whereDate('created_at', '>=', $request->created_from);
+        }
+
+        if ($request->filled('created_to')) {
+            $query->whereDate('created_at', '<=', $request->created_to);
+        }
+
+        if ($request->filled('followup_from')) {
+            $query->whereDate('next_followup_at', '>=', $request->followup_from);
+        }
+
+        if ($request->filled('followup_to')) {
+            $query->whereDate('next_followup_at', '<=', $request->followup_to);
         }
 
         $filterableFields = LeadField::query()
@@ -116,6 +134,10 @@ class LeadController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        $feedbacks = \App\Models\Feedback::whereNull('parent_id')
+            ->orderBy('name')
+            ->get();
+
         $assignmentRoles = $this->getAssignableRoles($user);
 
         $privacyService = app(\App\Services\PrivacyService::class);
@@ -123,7 +145,7 @@ class LeadController extends Controller
 
         return view(
             'lms.pages.leads-list',
-            compact('leads', 'lists', 'filterableFields', 'assignmentRoles', 'privacyService', 'privacySettings')
+            compact('leads', 'lists', 'feedbacks', 'filterableFields', 'assignmentRoles', 'privacyService', 'privacySettings')
         );
     }
 
@@ -188,10 +210,16 @@ class LeadController extends Controller
         $user = auth()->user();
         $list = LeadList::findOrFail($request->integer('list_id'));
 
-        $fields = LeadField::where('list_id', $list->id)
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get(['name', 'slug']);
+        $exportType = $request->get('export_type', 'full');
+
+        if ($exportType === 'dialer') {
+            $fields = collect();
+        } else {
+            $fields = LeadField::where('list_id', $list->id)
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get(['name', 'slug']);
+        }
 
         $query = Lead::query()
             ->where('list_id', $list->id)
@@ -201,7 +229,6 @@ class LeadController extends Controller
                 'name',
                 'email',
                 'phone_number',
-                'status',
                 'assigned_to',
                 'data',
                 'created_at',
@@ -217,51 +244,127 @@ class LeadController extends Controller
             });
         }
 
-        $filename = Str::slug($list->name ?: 'lead-list') . '-dialer-' . now()->format('YmdHis') . '.csv';
+        if ($request->filled('feedback_id')) {
+            $query->whereHas('leadFeedback', function ($q) use ($request) {
+                $q->where('feedback_id', $request->feedback_id);
+            });
+        }
 
-        return response()->streamDownload(function () use ($query, $fields) {
+        if ($request->filled('name')) {
+            $query->where('name', 'like', '%' . trim($request->name) . '%');
+        }
+
+        if ($request->filled('phone_number')) {
+            $query->where('phone_number', 'like', '%' . trim($request->phone_number) . '%');
+        }
+
+        if ($request->filled('email')) {
+            $query->where('email', 'like', '%' . trim($request->email) . '%');
+        }
+
+        if ($request->filled('followup_status')) {
+            $today = \Carbon\Carbon::today();
+            if ($request->followup_status === 'today') {
+                $query->whereDate('next_followup_at', $today);
+            } elseif ($request->followup_status === 'pending') {
+                $query->where('next_followup_at', '<', $today->copy()->startOfDay());
+            } elseif ($request->followup_status === 'upcoming') {
+                $query->where('next_followup_at', '>', $today->copy()->endOfDay());
+            }
+        }
+
+        if ($request->filled('created_from')) {
+            $query->whereDate('created_at', '>=', $request->created_from);
+        }
+
+        if ($request->filled('created_to')) {
+            $query->whereDate('created_at', '<=', $request->created_to);
+        }
+
+        if ($request->filled('followup_from')) {
+            $query->whereDate('next_followup_at', '>=', $request->followup_from);
+        }
+
+        if ($request->filled('followup_to')) {
+            $query->whereDate('next_followup_at', '<=', $request->followup_to);
+        }
+
+        if ($exportType === 'dialer') {
+            $query->where(function ($q) {
+                $q->whereNull('next_followup_at')
+                  ->orWhereDate('next_followup_at', \Carbon\Carbon::today());
+            });
+        }
+
+        $dynamicFilters = $request->input('filters', []);
+        if (!empty($dynamicFilters)) {
+            $filterableFields = LeadField::where('list_id', $list->id)
+                ->where('is_filterable', true)
+                ->get();
+            $filterService = app(\App\Services\LeadFilterService::class);
+            $query = $filterService->applyDynamicFilters($query, $dynamicFilters, $filterableFields);
+        }
+
+        $exportLabel = $exportType === 'dialer' ? 'dialer' : 'full';
+        $filename = Str::slug($list->name ?: 'lead-list') . '-' . $exportLabel . '-' . now()->format('YmdHis') . '.csv';
+
+        return response()->streamDownload(function () use ($query, $fields, $exportType) {
             $file = fopen('php://output', 'w');
 
-            fputcsv($file, array_merge([
-                'lead_id',
-                'name',
-                'email',
-                'phone_number',
-                'status',
-                'assigned_to',
-                'created_at',
-                'feedback',
-                'sub_feedback',
-                'feedback_remarks',
-                'followup_date',
-            ], $fields->pluck('slug')->all()));
+            if ($exportType === 'dialer') {
+                fputcsv($file, [
+                    'lead_id',
+                    'name',
+                    'phone_number',
+                ]);
+            } else {
+                fputcsv($file, array_merge([
+                    'lead_id',
+                    'name',
+                    'email',
+                    'phone_number',
+                    'assigned_to',
+                    'created_at',
+                    'feedback',
+                    'sub_feedback',
+                    'feedback_remarks',
+                    'followup_date',
+                ], $fields->pluck('slug')->all()));
+            }
 
-            $query->orderBy('id')->chunkById(1000, function ($leads) use ($file, $fields) {
+            $query->orderBy('id')->chunkById(1000, function ($leads) use ($file, $fields, $exportType) {
                 $leads->load(['leadFeedback.feedback', 'leadFeedback.subFeedback', 'assignedTo.details']);
 
                 foreach ($leads as $lead) {
-                    $data = $lead->data ?? [];
-                    $leadFeedback = $lead->leadFeedback;
+                    if ($exportType === 'dialer') {
+                        $row = [
+                            $lead->lead_id,
+                            $lead->name,
+                            $lead->phone_number,
+                        ];
+                    } else {
+                        $data = $lead->data ?? [];
+                        $leadFeedback = $lead->leadFeedback;
 
-                    $row = [
-                        $lead->lead_id,
-                        $lead->name,
-                        $lead->email,
-                        $lead->phone_number,
-                        $lead->status,
-                        $lead->assignedTo?->details?->employee_id ?? $lead->assigned_to,
-                        optional($lead->created_at)->format('Y-m-d H:i:s'),
-                        optional($leadFeedback?->feedback)->name,
-                        optional($leadFeedback?->subFeedback)->name,
-                        $leadFeedback?->remarks,
-                        optional($leadFeedback?->followup_date instanceof \Carbon\Carbon
-                            ? $leadFeedback->followup_date
-                            : ($leadFeedback?->followup_date ? \Carbon\Carbon::parse($leadFeedback->followup_date) : null))->format('Y-m-d H:i:s'),
-                    ];
+                        $row = [
+                            $lead->lead_id,
+                            $lead->name,
+                            $lead->email,
+                            $lead->phone_number,
+                            $lead->assignedTo?->details?->employee_id ?? $lead->assigned_to,
+                            optional($lead->created_at)->format('Y-m-d H:i:s'),
+                            optional($leadFeedback?->feedback)->name,
+                            optional($leadFeedback?->subFeedback)->name,
+                            $leadFeedback?->remarks,
+                            optional($leadFeedback?->followup_date instanceof \Carbon\Carbon
+                                ? $leadFeedback->followup_date
+                                : ($leadFeedback?->followup_date ? \Carbon\Carbon::parse($leadFeedback->followup_date) : null))->format('Y-m-d H:i:s'),
+                        ];
 
-                    foreach ($fields as $field) {
-                        $value = $data[$field->slug] ?? null;
-                        $row[] = is_array($value) ? implode('|', $value) : $value;
+                        foreach ($fields as $field) {
+                            $value = $data[$field->slug] ?? null;
+                            $row[] = is_array($value) ? implode('|', $value) : $value;
+                        }
                     }
 
                     fputcsv($file, $row);
