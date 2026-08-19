@@ -145,7 +145,7 @@ class LeadImportController extends Controller
                 $list = LeadList::create([
                     'added_by' => auth()->id(),
                     'tenant_id' => $tenantId,
-                    'name' => 'Imported List ' . now()->format('YmdHis'),
+                    'name' => $request->filled('list_name') ? $request->list_name : 'Imported List ' . now()->format('YmdHis'),
                     'description' => 'Auto generated from import file',
                     'is_active' => 1,
                     'created_by' => $userId,
@@ -199,6 +199,9 @@ class LeadImportController extends Controller
                 ),
                 $request->file('file')
             );
+            
+            $import->refresh();
+            $duplicates = $import->total_records - $import->imported_records - $import->failed_records;
 
             DB::commit();
 
@@ -206,6 +209,12 @@ class LeadImportController extends Controller
                 'success' => true,
                 'message' => 'Leads imported successfully.',
                 'list_id' => $list->id,
+                'stats' => [
+                    'total' => $import->total_records,
+                    'imported' => $import->imported_records,
+                    'duplicates' => $duplicates > 0 ? $duplicates : 0,
+                    'failed' => $import->failed_records,
+                ]
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
