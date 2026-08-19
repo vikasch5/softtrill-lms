@@ -9,6 +9,7 @@
         $status = LeadHelper::getLeadStatus($lead, $latestLeadFeedback);
         $nextFollowup = LeadHelper::parseNextFollowup($lead->next_followup_at);
         $createdOn = LeadHelper::formatCreatedAt($lead->created_at);
+        $updatedOn = $lead->updated_at ? LeadHelper::formatCreatedAt($lead->updated_at) : '—';
         
         $assignedUser = $users->firstWhere('id', $lead->assigned_to);
         $assignedName = $assignedUser->name ?? ($lead->assigned_to ?: 'Unassigned');
@@ -39,7 +40,7 @@
                     <div class="lv-card-head">
                         <div>
                             <div class="lv-lead-name">{{ $leadName }}</div>
-                            <div class="lv-lead-id">Lead #{{ $lead->id }} · Added {{ $createdOn }}</div>
+                            <div class="lv-lead-id">Lead #{{ $lead->id }} · Added {{ $createdOn }} · Updated {{ $updatedOn }}</div>
                         </div>
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                             <span class="lv-badge {{ $statusColor }}" id="lead-status-badge">

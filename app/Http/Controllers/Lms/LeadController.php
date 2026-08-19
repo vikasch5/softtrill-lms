@@ -43,6 +43,7 @@ class LeadController extends Controller
                 'next_followup_at',
                 'created_at',
                 'added_by',
+                'updated_at',
             ])
             ->with(['list', 'assignedTo', 'leadFeedback.feedback']);
 
@@ -628,6 +629,7 @@ class LeadController extends Controller
         }
 
         $lead->update($dataToUpdate);
+        $lead->touch();
 
         $redirectUrl = route(
             'lms.lead.view',
@@ -1211,6 +1213,8 @@ class LeadController extends Controller
             if (!empty($leadUpdates)) {
                 $lead->update($leadUpdates);
             }
+            
+            $lead->touch();
 
             LeadActivityLog::create([
                 'tenant_id' => auth()->id(),

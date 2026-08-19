@@ -264,6 +264,7 @@
                                 <th>Assigned To</th>
                                 <th>Call</th>
                                 <th>Created</th>
+                                <th>Last Updated</th>
                                 <th width="150">Action</th>
                             </tr>
                         </thead>
@@ -351,6 +352,12 @@
                                     <td>
 
                                         {{ $lead->created_at->format('d M Y') }}
+
+                                    </td>
+
+                                    <td>
+
+                                        {{ $lead->updated_at ? $lead->updated_at->format('d M Y') : '-' }}
 
                                     </td>
 

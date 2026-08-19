@@ -28,7 +28,8 @@ class Lead extends Model
         'last_followup_at',
         'next_followup_at',
         'created_by',
-        'dialer_lead_id'
+        'dialer_lead_id',
+        'updated_at'
     ];
 
     protected $casts = [
