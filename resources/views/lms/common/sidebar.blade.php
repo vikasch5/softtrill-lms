@@ -60,23 +60,23 @@
                     <span>Offers</span>
                 </a>
             </li>
-            <li
-                class="dropdown {{ in_array(Route::currentRouteName(), ['lms.performance.report']) ? 'open' : '' }}">
+            {{-- <li
+                class="dropdown {{ in_array(Route::currentRouteName(), ['lms.performance.report','lms.agent.performance']) ? 'open' : '' }}">
                 <a href="javascript:void(0)">
                     <iconify-icon icon="solar:pie-chart-outline" class="menu-icon"></iconify-icon>
                     <span>Report</span>
                 </a>
                 <ul class="sidebar-submenu">
                     <li
-                        class="{{ in_array(Route::currentRouteName(), ['lms.performance.report']) ? 'active-page' : '' }}">
+                        class="{{ in_array(Route::currentRouteName(), ['lms.performance.report','lms.agent.performance']) ? 'active-page' : '' }}">
                         <a href="{{ route('lms.performance.report') }}"
-                            class="{{ in_array(Route::currentRouteName(), ['lms.performance.report']) ? 'active-page' : '' }}"><i
+                            class="{{ in_array(Route::currentRouteName(), ['lms.performance.report','lms.agent.performance']) ? 'active-page' : '' }}"><i
                                 class="ri-circle-fill circle-icon text-danger-main w-auto"></i>
                             Performance Report</a>
                     </li>
                     
                 </ul>
-            </li>
+            </li> --}}
             @endrole
             @role('Admin')
             <li

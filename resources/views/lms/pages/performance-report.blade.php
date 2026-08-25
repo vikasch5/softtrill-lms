@@ -57,12 +57,22 @@
                         </select>
                     </div>
                     <div class="col-md-3">
+                        <label class="form-label fw-semibold">Date Range</label>
+                        <select name="date_preset" class="form-select">
+                            <option value="today" {{ ($datePreset ?? '') == 'today' ? 'selected' : '' }}>Today</option>
+                            <option value="yesterday" {{ ($datePreset ?? '') == 'yesterday' ? 'selected' : '' }}>Yesterday</option>
+                            <option value="this_week" {{ ($datePreset ?? '') == 'this_week' ? 'selected' : '' }}>This Week</option>
+                            <option value="this_month" {{ ($datePreset ?? '') == 'this_month' ? 'selected' : '' }}>This Month</option>
+                            <option value="custom" {{ ($datePreset ?? '') == 'custom' ? 'selected' : '' }}>Custom Range</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
                         <label class="form-label fw-semibold">Date From</label>
-                        <input type="date" name="date_from" class="form-control" value="2026-08-01">
+                        <input type="date" name="date_from" class="form-control" value="{{ $dateFrom ?? '' }}">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">Date To</label>
-                        <input type="date" name="date_to" class="form-control" value="2026-08-25">
+                        <input type="date" name="date_to" class="form-control" value="{{ $dateTo ?? '' }}">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">Campaign</label>
@@ -93,7 +103,7 @@
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                         <div>
                             <p class="fw-medium text-primary-light mb-1">Total Calls</p>
-                            <h6 class="mb-0">12,840</h6>
+                            <h6 class="mb-0">{{ number_format($users->sum('total_calls')) }}</h6>
                         </div>
                         <div class="w-50-px h-50-px bg-cyan rounded-circle d-flex justify-content-center align-items-center">
                             <iconify-icon icon="solar:phone-calling-rounded-bold" class="text-white text-2xl mb-0"></iconify-icon>
@@ -110,7 +120,7 @@
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                         <div>
                             <p class="fw-medium text-primary-light mb-1">Answered Calls</p>
-                            <h6 class="mb-0">7,942</h6>
+                            <h6 class="mb-0">{{ number_format($users->sum('answered_calls')) }}</h6>
                         </div>
                         <div class="w-50-px h-50-px bg-success-main rounded-circle d-flex justify-content-center align-items-center">
                             <iconify-icon icon="solar:phone-bold" class="text-white text-2xl mb-0"></iconify-icon>
@@ -127,7 +137,7 @@
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                         <div>
                             <p class="fw-medium text-primary-light mb-1">Answer Rate</p>
-                            <h6 class="mb-0">61.85%</h6>
+                            <h6 class="mb-0">{{ $users->sum('total_calls') > 0 ? round(($users->sum('answered_calls') / $users->sum('total_calls')) * 100, 2) : 0 }}%</h6>
                         </div>
                         <div class="w-50-px h-50-px bg-purple rounded-circle d-flex justify-content-center align-items-center">
                             <iconify-icon icon="solar:graph-up-bold" class="text-white text-2xl mb-0"></iconify-icon>
@@ -142,9 +152,14 @@
             <div class="card shadow-none border bg-gradient-start-4 h-100">
                 <div class="card-body p-20">
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+@php
+    $totalTalk = $users->sum('talk_sec');
+    $totalAnswered = $users->sum('answered_calls');
+    $avgDurSec = $totalAnswered > 0 ? $totalTalk / $totalAnswered : 0;
+@endphp
                         <div>
                             <p class="fw-medium text-primary-light mb-1">Avg. Duration</p>
-                            <h6 class="mb-0">04:32</h6>
+                            <h6 class="mb-0">{{ gmdate('i:s', $avgDurSec) }}</h6>
                         </div>
                         <div class="w-50-px h-50-px bg-info rounded-circle d-flex justify-content-center align-items-center">
                             <iconify-icon icon="solar:clock-circle-bold" class="text-white text-2xl mb-0"></iconify-icon>
@@ -161,7 +176,7 @@
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                         <div>
                             <p class="fw-medium text-primary-light mb-1">Total Agents</p>
-                            <h6 class="mb-0">42</h6>
+                            <h6 class="mb-0">{{ count($users) }}</h6>
                         </div>
                         <div class="w-50-px h-50-px bg-primary rounded-circle d-flex justify-content-center align-items-center">
                             <iconify-icon icon="solar:users-group-rounded-bold" class="text-white text-2xl mb-0"></iconify-icon>
@@ -179,7 +194,7 @@
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                         <div>
                             <p class="fw-medium text-primary-light mb-1">Total Talk Time</p>
-                            <h6 class="mb-0">428h 32m</h6>
+                            <h6 class="mb-0">{{ floor($totalTalk / 3600) . 'h ' . gmdate('i\m', $totalTalk) }}</h6>
                         </div>
                         <div class="w-50-px h-50-px bg-warning rounded-circle d-flex justify-content-center align-items-center">
                             <iconify-icon icon="solar:history-bold" class="text-white text-2xl mb-0"></iconify-icon>
@@ -220,176 +235,43 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- Row 1 -->
+                                @forelse($users as $user)
                                 <tr>
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <div class="flex-grow-1">
-                                                <h6 class="text-md mb-0 fw-normal">Rahul Kumar</h6>
-                                                <span class="text-sm text-secondary-light fw-normal">Agent #1001</span>
+                                                <h6 class="text-md mb-0 fw-normal">{{ $user->name }}</h6>
+                                                <span class="text-sm text-secondary-light fw-normal">Agent #{{ $user->details->employee_id ?? $user->id }}</span>
                                             </div>
                                         </div>
                                     </td>
                                     <td>
                                         <div class="d-flex flex-column text-sm text-secondary-light">
-                                            <span><strong>TL:</strong> Suresh Kumar</span>
-                                            <span><strong>Mgr:</strong> Amit Sharma</span>
+                                            <span><strong>TL:</strong> {{ $user->details->teamleader->name ?? 'N/A' }}</span>
+                                            <span><strong>Mgr:</strong> {{ $user->details->manager->name ?? 'N/A' }}</span>
                                         </div>
                                     </td>
-                                    {{-- <td>Course Sales</td> --}}
-                                    <td class="text-end">420</td>
-                                    <td class="text-end">286</td>
+                                    <td class="text-end fw-bold">{{ $user->total_calls }}</td>
+                                    <td class="text-end fw-bold text-success-main">{{ $user->answered_calls }}</td>
                                     <td class="text-end">
-                                        <span class="bg-success-focus text-success-main px-24 py-4 rounded-pill text-sm">68.10%</span>
+                                        <span class="bg-secondary-focus text-secondary-main px-24 py-4 rounded-pill text-sm">{{ number_format($user->answer_rate, 2) }}%</span>
                                     </td>
-                                    <td class="text-end">04:33</td>
-                                    <td class="text-end">08:14</td>
-                                    <td class="text-end">01:02</td>
-                                    <td class="text-end fw-medium text-dark">21:42</td>
-                                    <td class="text-end">51.0</td>
+                                    <td class="text-end">{{ gmdate('i:s', $user->avg_duration) }}</td>
+                                    <td class="text-end">{{ floor($user->login_sec / 3600) . 'h ' . gmdate('i\m', $user->login_sec) }}</td>
+                                    <td class="text-end">{{ floor($user->pause_sec / 3600) . 'h ' . gmdate('i\m', $user->pause_sec) }}</td>
+                                    <td class="text-end fw-medium text-dark">{{ floor($user->talk_sec / 3600) . 'h ' . gmdate('i\m', $user->talk_sec) }}</td>
+                                    <td class="text-end">{{ number_format($user->calls_per_hour, 1) }}</td>
                                     <td class="text-center">
-                                        <a href="{{ route('lms.agent.performance', ['id' => 1001]) }}" class="btn btn-primary-transparent btn-sm px-12 py-4 rounded-pill fw-medium d-inline-flex align-items-center gap-1">
+                                        <a href="{{ route('lms.agent.performance', ['id' => $user->id]) }}" class="btn btn-primary-transparent btn-sm px-12 py-4 rounded-pill fw-medium d-inline-flex align-items-center gap-1">
                                             View Details <iconify-icon icon="solar:arrow-right-outline"></iconify-icon>
                                         </a>
                                     </td>
                                 </tr>
-                                
-                                <!-- Row 2 -->
+                                @empty
                                 <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="flex-grow-1">
-                                                <h6 class="text-md mb-0 fw-normal">Amit Sharma</h6>
-                                                <span class="text-sm text-secondary-light fw-normal">Agent #1002</span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex flex-column text-sm text-secondary-light">
-                                            <span><strong>TL:</strong> Suresh Kumar</span>
-                                            <span><strong>Mgr:</strong> Amit Sharma</span>
-                                        </div>
-                                    </td>
-                                    {{-- <td>Course Sales</td> --}}
-                                    <td class="text-end">395</td>
-                                    <td class="text-end">271</td>
-                                    <td class="text-end">
-                                        <span class="bg-success-focus text-success-main px-24 py-4 rounded-pill text-sm">68.61%</span>
-                                    </td>
-                                    <td class="text-end">04:29</td>
-                                    <td class="text-end">08:02</td>
-                                    <td class="text-end">00:48</td>
-                                    <td class="text-end fw-medium text-dark">20:18</td>
-                                    <td class="text-end">49.2</td>
-                                    <td class="text-center">
-                                        <a href="{{ route('lms.agent.performance', ['id' => 1002]) }}" class="btn btn-primary-transparent btn-sm px-12 py-4 rounded-pill fw-medium d-inline-flex align-items-center gap-1">
-                                            View Details <iconify-icon icon="solar:arrow-right-outline"></iconify-icon>
-                                        </a>
-                                    </td>
+                                    <td colspan="11" class="text-center">No agents found</td>
                                 </tr>
-
-                                <!-- Row 3 -->
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="flex-grow-1">
-                                                <h6 class="text-md mb-0 fw-normal">Neha Singh</h6>
-                                                <span class="text-sm text-secondary-light fw-normal">Agent #1003</span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex flex-column text-sm text-secondary-light">
-                                            <span><strong>TL:</strong> Raj Kumar</span>
-                                            <span><strong>Mgr:</strong> Priya Sharma</span>
-                                        </div>
-                                    </td>
-                                    {{-- <td>Admission</td> --}}
-                                    <td class="text-end">388</td>
-                                    <td class="text-end">169</td>
-                                    <td class="text-end">
-                                        <span class="bg-warning-focus text-warning-main px-24 py-4 rounded-pill text-sm">64.18%</span>
-                                    </td>
-                                    <td class="text-end">04:32</td>
-                                    <td class="text-end">07:52</td>
-                                    <td class="text-end">00:56</td>
-                                    <td class="text-end fw-medium text-dark">18:51</td>
-                                    <td class="text-end">49.3</td>
-                                    <td class="text-center">
-                                        <a href="{{ route('lms.agent.performance', ['id' => 1003]) }}" class="btn btn-primary-transparent btn-sm px-12 py-4 rounded-pill fw-medium d-inline-flex align-items-center gap-1">
-                                            View Details <iconify-icon icon="solar:arrow-right-outline"></iconify-icon>
-                                        </a>
-                                    </td>
-                                </tr>
-
-                                <!-- Row 4 -->
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="flex-grow-1">
-                                                <h6 class="text-md mb-0 fw-normal">Rohit Kumar</h6>
-                                                <span class="text-sm text-secondary-light fw-normal">Agent #1004</span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex flex-column text-sm text-secondary-light">
-                                            <span><strong>TL:</strong> Raj Kumar</span>
-                                            <span><strong>Mgr:</strong> Priya Sharma</span>
-                                        </div>
-                                    </td>
-                                    {{-- <td>Admission</td> --}}
-                                    <td class="text-end">410</td>
-                                    <td class="text-end">151</td>
-                                    <td class="text-end">
-                                        <span class="bg-warning-focus text-warning-main px-24 py-4 rounded-pill text-sm">58.05%</span>
-                                    </td>
-                                    <td class="text-end">03:52</td>
-                                    <td class="text-end">08:05</td>
-                                    <td class="text-end">01:10</td>
-                                    <td class="text-end fw-medium text-dark">15:22</td>
-                                    <td class="text-end">50.7</td>
-                                    <td class="text-center">
-                                        <a href="{{ route('lms.agent.performance', ['id' => 1004]) }}" class="btn btn-primary-transparent btn-sm px-12 py-4 rounded-pill fw-medium d-inline-flex align-items-center gap-1">
-                                            View Details <iconify-icon icon="solar:arrow-right-outline"></iconify-icon>
-                                        </a>
-                                    </td>
-                                </tr>
-
-                                <!-- Row 5 -->
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="flex-grow-1">
-                                                <h6 class="text-md mb-0 fw-normal">Pooja Verma</h6>
-                                                <span class="text-sm text-secondary-light fw-normal">Agent #1005</span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex flex-column text-sm text-secondary-light">
-                                            <span><strong>TL:</strong> Suresh Kumar</span>
-                                            <span><strong>Mgr:</strong> Amit Sharma</span>
-                                        </div>
-                                    </td>
-                                    {{-- <td>Renewal</td> --}}
-                                    <td class="text-end">365</td>
-                                    <td class="text-end">198</td>
-                                    <td class="text-end">
-                                        <span class="bg-danger-focus text-danger-main px-24 py-4 rounded-pill text-sm">54.25%</span>
-                                    </td>
-                                    <td class="text-end">03:52</td>
-                                    <td class="text-end">07:45</td>
-                                    <td class="text-end">00:52</td>
-                                    <td class="text-end fw-medium text-dark">12:47</td>
-                                    <td class="text-end">47.1</td>
-                                    <td class="text-center">
-                                        <a href="{{ route('lms.agent.performance', ['id' => 1005]) }}" class="btn btn-primary-transparent btn-sm px-12 py-4 rounded-pill fw-medium d-inline-flex align-items-center gap-1">
-                                            View Details <iconify-icon icon="solar:arrow-right-outline"></iconify-icon>
-                                        </a>
-                                    </td>
-                                </tr>
-
+                                @endforelse
                             </tbody>
                         </table>
                     </div>
