@@ -51,6 +51,14 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/feedback-delete', [App\Http\Controllers\Lms\FeedbackController::class, 'feedbackDelete'])->name('lms.feedbacks.delete');
     Route::get('/feedbacks/sub-feedbacks/{feedbackId}', [App\Http\Controllers\Lms\FeedbackController::class, 'subFeedbacks'])->name('lms.feedbacks.sub-feedbacks');
 
+    Route::get('/performance-report', function () {
+        return view('lms.pages.performance-report');
+    })->name('lms.performance.report');
+
+    Route::get('/agent-performance/{id?}', function () {
+        return view('lms.pages.agent-performance');
+    })->name('lms.agent.performance');
+
     Route::get('/dashboard-widget-list', [DashboardController::class, 'widgetsList'])->name('lms.dashboard.widgets.list');
     Route::get('/dashboard-widget', [DashboardController::class, 'dashboardWidget'])->name('lms.dashboard.widgets');
     Route::get('/dashboard-widget-edit/{id}', [DashboardController::class, 'editWidget'])->name('lms.dashboard.widgets.edit');
