@@ -234,6 +234,10 @@ class ReportController extends Controller
             \Log::error("Dialer DB Error in ReportController: " . $e->getMessage() . "\nTrace: " . $e->getTraceAsString());
         }
 
+        if ($request->ajax()) {
+            return view('lms.pages.partials.performance-report-content', compact('users', 'aggregate'))->render();
+        }
+
         return view('lms.pages.performance-report', compact('users', 'dateFrom', 'dateTo', 'datePreset', 'aggregate'));
     }
 
@@ -428,6 +432,10 @@ class ReportController extends Controller
         $user->avg_duration = $metrics['avg_duration'];
         $user->calls_per_hour = $metrics['calls_per_hour'];
         $user->calls_gt_2min = $metrics['calls_gt_2min'];
+
+        if ($request->ajax()) {
+            return view('lms.pages.partials.agent-performance-content', compact('user', 'dailyPerformance', 'callHistory', 'callingActivity'))->render();
+        }
 
         return view('lms.pages.agent-performance', compact('user', 'dateFrom', 'dateTo', 'datePreset', 'dailyPerformance', 'callHistory', 'callingActivity'));
     }
