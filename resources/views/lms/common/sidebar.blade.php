@@ -60,7 +60,7 @@
                     <span>Offers</span>
                 </a>
             </li>
-            {{-- <li
+            <li
                 class="dropdown {{ in_array(Route::currentRouteName(), ['lms.performance.report','lms.agent.performance']) ? 'open' : '' }}">
                 <a href="javascript:void(0)">
                     <iconify-icon icon="solar:pie-chart-outline" class="menu-icon"></iconify-icon>
@@ -76,7 +76,7 @@
                     </li>
                     
                 </ul>
-            </li> --}}
+            </li>
             @endrole
             @role('Admin')
             <li
