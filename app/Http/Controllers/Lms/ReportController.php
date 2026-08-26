@@ -125,24 +125,49 @@ class ReportController extends Controller
         [$datePreset, $dateFrom, $dateTo, $dateFromTime, $dateToTime] = $this->resolveDateRange($request);
 
         // Core Eloquent query for paginated view only
-        $query = User::with('details.teamleader', 'details.manager');
+        $query = User::with('details.teamleader', 'details.manager')
+            ->whereDoesntHave('roles', function($q) {
+                $q->whereIn('name', ['Admin', 'admin']);
+            });
 
         // Lightweight query for Employee IDs (avoids Eloquent hydration)
         $employeeIdsQuery = DB::table('user_details')
             ->whereNotNull('employee_id')
+            ->whereNotIn('user_id', function ($q) {
+                $q->select('model_id')
+                  ->from('model_has_roles')
+                  ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+                  ->where('model_has_roles.model_type', User::class)
+                  ->whereIn('roles.name', ['Admin', 'admin']);
+            })
             ->select('employee_id');
 
-        if ($currentUser->hasRole('Admin')) {
+        if ($currentUser->hasRole(['Admin', 'admin'])) {
             // Admin can see all users
-        } elseif ($currentUser->hasRole('cluster')) {
-            $query->whereHas('details', function ($q) use ($currentUser) { $q->where('cluster_id', $currentUser->id); });
-            $employeeIdsQuery->where('cluster_id', $currentUser->id);
-        } elseif ($currentUser->hasRole('manager')) {
-            $query->whereHas('details', function ($q) use ($currentUser) { $q->where('manager_id', $currentUser->id); });
-            $employeeIdsQuery->where('manager_id', $currentUser->id);
-        } elseif ($currentUser->hasRole('teamleader') || $currentUser->hasRole('supervisor')) {
-            $query->whereHas('details', function ($q) use ($currentUser) { $q->where('teamleader_id', $currentUser->id); });
-            $employeeIdsQuery->where('teamleader_id', $currentUser->id);
+        } elseif ($currentUser->hasRole(['Cluster', 'cluster'])) {
+            $query->where(function($q) use ($currentUser) {
+                $q->whereHas('details', function ($sq) use ($currentUser) { $sq->where('cluster_id', $currentUser->id); })
+                  ->orWhere('id', $currentUser->id);
+            });
+            $employeeIdsQuery->where(function($q) use ($currentUser) {
+                $q->where('cluster_id', $currentUser->id)->orWhere('user_id', $currentUser->id);
+            });
+        } elseif ($currentUser->hasRole(['Manager', 'manager'])) {
+            $query->where(function($q) use ($currentUser) {
+                $q->whereHas('details', function ($sq) use ($currentUser) { $sq->where('manager_id', $currentUser->id); })
+                  ->orWhere('id', $currentUser->id);
+            });
+            $employeeIdsQuery->where(function($q) use ($currentUser) {
+                $q->where('manager_id', $currentUser->id)->orWhere('user_id', $currentUser->id);
+            });
+        } elseif ($currentUser->hasRole(['TeamLeader', 'teamleader', 'Supervisor', 'supervisor'])) {
+            $query->where(function($q) use ($currentUser) {
+                $q->whereHas('details', function ($sq) use ($currentUser) { $sq->where('teamleader_id', $currentUser->id); })
+                  ->orWhere('id', $currentUser->id);
+            });
+            $employeeIdsQuery->where(function($q) use ($currentUser) {
+                $q->where('teamleader_id', $currentUser->id)->orWhere('user_id', $currentUser->id);
+            });
         } else {
             // Normal agent, see only themselves
             $query->where('id', $currentUser->id);
