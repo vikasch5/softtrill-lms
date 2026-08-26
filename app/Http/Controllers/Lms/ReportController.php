@@ -127,7 +127,7 @@ class ReportController extends Controller
         // Core Eloquent query for paginated view only
         $query = User::with('details.teamleader', 'details.manager')
             ->whereDoesntHave('roles', function($q) {
-                $q->whereIn('name', ['Admin', 'admin']);
+                $q->whereIn('name', ['Admin', 'admin', 'Cluster', 'cluster', 'Manager', 'manager']);
             });
 
         // Lightweight query for Employee IDs (avoids Eloquent hydration)
@@ -138,28 +138,18 @@ class ReportController extends Controller
                   ->from('model_has_roles')
                   ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
                   ->where('model_has_roles.model_type', User::class)
-                  ->whereIn('roles.name', ['Admin', 'admin']);
+                  ->whereIn('roles.name', ['Admin', 'admin', 'Cluster', 'cluster', 'Manager', 'manager']);
             })
             ->select('employee_id');
 
         if ($currentUser->hasRole(['Admin', 'admin'])) {
             // Admin can see all users
         } elseif ($currentUser->hasRole(['Cluster', 'cluster'])) {
-            $query->where(function($q) use ($currentUser) {
-                $q->whereHas('details', function ($sq) use ($currentUser) { $sq->where('cluster_id', $currentUser->id); })
-                  ->orWhere('id', $currentUser->id);
-            });
-            $employeeIdsQuery->where(function($q) use ($currentUser) {
-                $q->where('cluster_id', $currentUser->id)->orWhere('user_id', $currentUser->id);
-            });
+            $query->whereHas('details', function ($sq) use ($currentUser) { $sq->where('cluster_id', $currentUser->id); });
+            $employeeIdsQuery->where('cluster_id', $currentUser->id);
         } elseif ($currentUser->hasRole(['Manager', 'manager'])) {
-            $query->where(function($q) use ($currentUser) {
-                $q->whereHas('details', function ($sq) use ($currentUser) { $sq->where('manager_id', $currentUser->id); })
-                  ->orWhere('id', $currentUser->id);
-            });
-            $employeeIdsQuery->where(function($q) use ($currentUser) {
-                $q->where('manager_id', $currentUser->id)->orWhere('user_id', $currentUser->id);
-            });
+            $query->whereHas('details', function ($sq) use ($currentUser) { $sq->where('manager_id', $currentUser->id); });
+            $employeeIdsQuery->where('manager_id', $currentUser->id);
         } elseif ($currentUser->hasRole(['TeamLeader', 'teamleader', 'Supervisor', 'supervisor'])) {
             $query->where(function($q) use ($currentUser) {
                 $q->whereHas('details', function ($sq) use ($currentUser) { $sq->where('teamleader_id', $currentUser->id); })
