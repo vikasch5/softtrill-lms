@@ -492,7 +492,7 @@
                                 <thead>
                                     <tr>
                                         <th>Time</th>
-                                        <th>Lead</th>
+                                        <th>List ID</th>
                                         <th>Call Status</th>
                                         @hasanyrole('Admin|Manager|Cluster|TeamLeader|Supervisor|admin|manager|cluster|teamleader|supervisor')
                                         <th>Duration</th>
@@ -516,7 +516,7 @@
                                         @endphp
                                         <tr>
                                             <td>{{ $callTime->format('h:i A') }} <span class="text-secondary-light fs-xs d-block">{{ $callTime->format('M d, Y') }}</span></td>
-                                            <td class="text-primary-main fw-medium">Lead #{{ $call->lead_id }}</td>
+                                            <td class="text-primary-main fw-medium">List #{{ $call->list_id }}</td>
                                         
                                             <td><span class="badge {{ $badgeClass }} rounded-pill px-24 py-4 text-sm">{{ $statusText }}</span></td>
                                             @hasanyrole('Admin|Manager|Cluster|TeamLeader|Supervisor|admin|manager|cluster|teamleader|supervisor')
@@ -529,7 +529,7 @@
                                                         @endphp
                                                         <button type="button" class="btn btn-primary-transparent btn-sm rounded-circle w-40-px h-40-px d-inline-flex justify-content-center align-items-center play-recording-btn" 
                                                                 data-recording-url="{{ $recUrl }}" 
-                                                                data-lead-id="Lead #{{ $call->lead_id }}" 
+                                                                data-lead-id="List #{{ $call->list_id }}" 
                                                                 data-call-date="{{ $callTime->format('M d, Y') }}"
                                                                 title="Play Recording">
                                                             <iconify-icon icon="solar:play-circle-bold" class="text-xl"></iconify-icon>
