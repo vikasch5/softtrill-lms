@@ -50,15 +50,37 @@
             <div class="collapse" id="performanceFiltersCollapse">
                 <div class="card card-body border rounded-3 bg-light-subtle shadow-sm mb-4">
                     <div class="row g-3">
+                        @if(auth()->user()->hasAnyRole(['Admin', 'admin']))
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Cluster</label>
+                                <select id="filter_cluster" name="cluster_id" class="form-select hierarchy-filter" data-role="Cluster">
+                                    <option value="">All Clusters</option>
+                                </select>
+                            </div>
+                        @endif
+
+                        @if(auth()->user()->hasAnyRole(['Admin', 'admin', 'Cluster', 'cluster']))
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Manager</label>
+                                <select id="filter_manager" name="manager_id" class="form-select hierarchy-filter" data-role="Manager" {{ auth()->user()->hasAnyRole(['Admin', 'admin']) ? 'disabled' : '' }}>
+                                    <option value="">All Managers</option>
+                                </select>
+                            </div>
+                        @endif
+
+                        @if(auth()->user()->hasAnyRole(['Admin', 'admin', 'Cluster', 'cluster', 'Manager', 'manager']))
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Team Leader</label>
+                                <select id="filter_teamleader" name="teamleader_id" class="form-select hierarchy-filter" data-role="TeamLeader" {{ auth()->user()->hasAnyRole(['Admin', 'admin', 'Cluster', 'cluster']) ? 'disabled' : '' }}>
+                                    <option value="">All Team Leaders</option>
+                                </select>
+                            </div>
+                        @endif
+
                         <div class="col-md-3">
                             <label class="form-label fw-semibold">Agent</label>
-                            <select name="agent_id" class="form-select">
+                            <select id="filter_agent" name="agent_id" class="form-select hierarchy-filter" data-role="Agent" {{ auth()->user()->hasAnyRole(['Admin', 'admin', 'Cluster', 'cluster', 'Manager', 'manager']) ? 'disabled' : '' }}>
                                 <option value="">All Agents</option>
-                                <option value="1001">Rahul Kumar</option>
-                                <option value="1002">Amit Sharma</option>
-                                <option value="1003">Neha Singh</option>
-                                <option value="1004">Rohit Kumar</option>
-                                <option value="1005">Pooja Verma</option>
                             </select>
                         </div>
                         <div class="col-md-3">
@@ -93,7 +115,7 @@
             </div>
         </form>
 
-        
+
         <div id="performanceReportContent">
             @include('lms.pages.partials.performance-report-content')
         </div>
@@ -103,19 +125,105 @@
 
 @section('scripts')
 <script>
+    $(document).ready(function() {
+        // --- Hierarchy Filters Logic ---
+        let hierarchyXhr = null;
+
+        function resetSelect($select, placeholder) {
+            if ($select.length) {
+                $select.html(`<option value="">${placeholder}</option>`);
+                $select.prop('disabled', true);
+            }
+        }
+
+        function populateSelect($select, data, placeholder) {
+            if ($select.length) {
+                let options = `<option value="">${placeholder}</option>`;
+                data.forEach(function (item) {
+                    options += `<option value="${item.id}">${item.name}</option>`;
+                });
+                $select.html(options);
+                $select.prop('disabled', false);
+            }
+        }
+
+        function fetchHierarchyUsers(role, parentId, $select, placeholder) {
+            if (!$select.length) return; // if the select doesn't exist for this user role
+
+            if (hierarchyXhr) hierarchyXhr.abort();
+            
+            resetSelect($select, 'Loading...');
+
+            hierarchyXhr = $.ajax({
+                url: '{{ route("lms.api.hierarchy-users") }}',
+                method: 'GET',
+                data: { role: role, parent_id: parentId || '' },
+                success: function (data) {
+                    populateSelect($select, data, placeholder);
+                },
+                error: function (xhr) {
+                    if (xhr.statusText !== 'abort') {
+                        resetSelect($select, 'Error loading');
+                    }
+                }
+            });
+        }
+
+        // Initialize top level
+        @if(auth()->user()->hasAnyRole(['Admin', 'admin']))
+            fetchHierarchyUsers('Cluster', null, $('#filter_cluster'), 'All Clusters');
+        @elseif(auth()->user()->hasAnyRole(['Cluster', 'cluster']))
+            fetchHierarchyUsers('Manager', null, $('#filter_manager'), 'All Managers');
+        @elseif(auth()->user()->hasAnyRole(['Manager', 'manager']))
+            fetchHierarchyUsers('TeamLeader', null, $('#filter_teamleader'), 'All Team Leaders');
+        @elseif(auth()->user()->hasAnyRole(['TeamLeader', 'teamleader', 'Supervisor', 'supervisor']))
+            fetchHierarchyUsers('Agent', null, $('#filter_agent'), 'All Agents');
+        @endif
+
+        // Cascade Events
+        $('#filter_cluster').on('change', function () {
+            resetSelect($('#filter_manager'), 'All Managers');
+            resetSelect($('#filter_teamleader'), 'All Team Leaders');
+            resetSelect($('#filter_agent'), 'All Agents');
+
+            if ($(this).val()) {
+                fetchHierarchyUsers('Manager', $(this).val(), $('#filter_manager'), 'All Managers');
+            }
+        });
+
+        $('#filter_manager').on('change', function () {
+            resetSelect($('#filter_teamleader'), 'All Team Leaders');
+            resetSelect($('#filter_agent'), 'All Agents');
+
+            if ($(this).val()) {
+                fetchHierarchyUsers('TeamLeader', $(this).val(), $('#filter_teamleader'), 'All Team Leaders');
+            }
+        });
+
+        $('#filter_teamleader').on('change', function () {
+            resetSelect($('#filter_agent'), 'All Agents');
+
+            if ($(this).val()) {
+                fetchHierarchyUsers('Agent', $(this).val(), $('#filter_agent'), 'All Agents');
+            }
+        });
+
+    });
+
+    // --- Dynamic Content Logic ---
     function fetchAjaxContent(url, data = {}) {
         const container = $('#performanceReportContent');
         container.css('opacity', '0.5'); // Visual loading indicator
-        
+
         $.ajax({
             url: url,
             type: 'GET',
             data: data,
-            success: function(response) {
+            success: function (response) {
                 container.html(response);
                 container.css('opacity', '1');
             },
-            error: function() {
+            error: function () {
                 alert('An error occurred while fetching data. Please try again.');
                 container.css('opacity', '1');
             }
@@ -123,13 +231,13 @@
     }
 
     // Handle Global Filters Submit
-    $(document).on('submit', '#globalFiltersForm', function(e) {
+    $(document).on('submit', '#globalFiltersForm', function (e) {
         e.preventDefault();
         fetchAjaxContent($(this).attr('action'), $(this).serialize());
     });
 
     // Handle Pagination Clicks inside the dynamic content
-    $(document).on('click', '#performanceReportContent .pagination a', function(e) {
+    $(document).on('click', '#performanceReportContent .pagination a', function (e) {
         e.preventDefault();
         fetchAjaxContent($(this).attr('href'), $('#globalFiltersForm').serialize());
     });

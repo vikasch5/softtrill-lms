@@ -42,6 +42,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/api/assignable-users', [LeadController::class, 'getAssignableUsers'])->name('lms.api.assignable-users');
     Route::get('/api/supervisors-by-manager', [LeadController::class, 'getSupervisorsByManager'])->name('lms.api.supervisors-by-manager');
     Route::get('/api/users-by-supervisor', [LeadController::class, 'getUsersBySupervisor'])->name('lms.api.users-by-supervisor');
+    Route::get('/api/hierarchy-users', [ReportController::class, 'getHierarchyUsers'])->name('lms.api.hierarchy-users');
     Route::get('/leads', [LeadController::class, 'leadsList'])->name('lms.leads');
     Route::get('/leads/download', [LeadController::class, 'downloadLeadList'])->name('lms.leads.download');
     Route::get('/lead/{id}', [LeadController::class, 'leadsEdit'])->name('lms.lead.edit');
