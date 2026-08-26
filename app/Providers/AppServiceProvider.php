@@ -84,6 +84,7 @@ class AppServiceProvider extends ServiceProvider
 
         Paginator::useBootstrapFive();
 
+
         View::composer('lms.common.header', function ($view) {
             $stats = [
                 'today' => 0,

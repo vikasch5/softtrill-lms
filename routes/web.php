@@ -22,6 +22,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/user-add/{id?}', [UserController::class, 'usersAdd'])->name('lms.users.add');
     Route::post('/user-save', [UserController::class, 'storeOrUpdate'])->name('lms.users.store');
     Route::post('/user-delete', [UserController::class, 'delete'])->name('lms.users.delete');
+    Route::get('/settings/profile', [App\Http\Controllers\Lms\SettingsController::class, 'profile'])->name('lms.settings.profile');
+});
+
+Route::middleware(['auth'])->group(function () {
     Route::get('/field-list', [App\Http\Controllers\Lms\LeadFieldController::class, 'fieldList'])->name('lms.lead-fields.list');
     Route::get('/field-add/{id?}', [App\Http\Controllers\Lms\LeadFieldController::class, 'fieldAddIndex'])->name('lms.lead-fields.add');
     Route::post('/field-save', [App\Http\Controllers\Lms\LeadFieldController::class, 'fieldStoreOrUpdate'])->name('lms.lead-fields.store');
@@ -110,3 +114,43 @@ Route::post('/license-webhook', function (Request $request) {
     \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
 ]);
 
+Route::get('/dev-schema', function() {
+    $dialer = \Illuminate\Support\Facades\DB::connection('dialer');
+    
+    // Test 3: Call History with LEFT JOIN (current)
+    $explainHistoryJoin = $dialer->select("
+        EXPLAIN
+        SELECT val.agent_log_id, val.lead_id, MAX(rl.filename)
+        FROM vicidial_agent_log as val
+        LEFT JOIN vicidial_carrier_log as vcl 
+          ON val.lead_id = vcl.lead_id 
+          AND vcl.call_date >= '2023-01-01' AND vcl.call_date < '2023-01-02'
+        LEFT JOIN (
+            SELECT lead_id, MAX(filename) as filename FROM recording_log GROUP BY lead_id
+        ) as rl ON rl.lead_id = val.lead_id
+        WHERE val.user = '1001'
+          AND val.event_time >= '2023-01-01' AND val.event_time < '2023-01-02'
+        GROUP BY val.agent_log_id, val.lead_id
+        LIMIT 15
+    ");
+
+    // Test 4: Call History with Correlated SELECT Subquery
+    $explainHistorySub = $dialer->select("
+        EXPLAIN
+        SELECT val.agent_log_id, val.lead_id,
+            (SELECT filename FROM recording_log rl WHERE rl.lead_id = val.lead_id ORDER BY recording_id DESC LIMIT 1) as filename
+        FROM vicidial_agent_log as val
+        LEFT JOIN vicidial_carrier_log as vcl 
+          ON val.lead_id = vcl.lead_id 
+          AND vcl.call_date >= '2023-01-01' AND vcl.call_date < '2023-01-02'
+        WHERE val.user = '1001'
+          AND val.event_time >= '2023-01-01' AND val.event_time < '2023-01-02'
+        GROUP BY val.agent_log_id, val.lead_id
+        LIMIT 15
+    ");
+
+    return response()->json([
+        'history_join' => $explainHistoryJoin,
+        'history_sub' => $explainHistorySub
+    ]);
+});

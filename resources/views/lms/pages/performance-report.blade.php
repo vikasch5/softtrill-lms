@@ -103,7 +103,7 @@
                         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                             <div>
                                 <p class="fw-medium text-primary-light mb-1">Total Calls</p>
-                                <h6 class="mb-0">{{ number_format($users->sum('total_calls')) }}</h6>
+                                <h6 class="mb-0">{{ number_format($aggregate['total_calls'] ?? 0) }}</h6>
                             </div>
                             <div
                                 class="w-50-px h-50-px bg-cyan rounded-circle d-flex justify-content-center align-items-center">
@@ -122,7 +122,7 @@
                         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                             <div>
                                 <p class="fw-medium text-primary-light mb-1">Answered Calls</p>
-                                <h6 class="mb-0">{{ number_format($users->sum('answered_calls')) }}</h6>
+                                <h6 class="mb-0">{{ number_format($aggregate['answered_calls'] ?? 0) }}</h6>
                             </div>
                             <div
                                 class="w-50-px h-50-px bg-success-main rounded-circle d-flex justify-content-center align-items-center">
@@ -141,7 +141,7 @@
                             <div>
                                 <p class="fw-medium text-primary-light mb-1">Answer Rate</p>
                                 <h6 class="mb-0">
-                                    {{ $users->sum('total_calls') > 0 ? round(($users->sum('answered_calls') / $users->sum('total_calls')) * 100, 2) : 0 }}%
+                                    {{ number_format($aggregate['answer_rate'] ?? 0, 2) }}%
                                 </h6>
                             </div>
                             <div
@@ -159,9 +159,8 @@
                     <div class="card-body p-20">
                         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                             @php
-                                $totalTalk = $users->sum('talk_sec');
-                                $totalAnswered = $users->sum('answered_calls');
-                                $avgDurSec = $totalAnswered > 0 ? $totalTalk / $totalAnswered : 0;
+                                $totalTalk = $aggregate['talk_sec'] ?? 0;
+                                $avgDurSec = $aggregate['avg_duration'] ?? 0;
                             @endphp
                             <div>
                                 <p class="fw-medium text-primary-light mb-1">Avg. Duration</p>
@@ -184,7 +183,7 @@
                         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                             <div>
                                 <p class="fw-medium text-primary-light mb-1">Total Agents</p>
-                                <h6 class="mb-0">{{ $users->total() }}</h6>
+                                <h6 class="mb-0">{{ $aggregate['total_agents'] ?? $users->total() }}</h6>
                             </div>
                             <div
                                 class="w-50-px h-50-px bg-primary rounded-circle d-flex justify-content-center align-items-center">
@@ -234,7 +233,7 @@
                                     <tr>
                                         <th>Agent Name</th>
                                         <th>Parents</th>
-                                        <th class="text-end">Calls</th>
+                                        <th class="text-end">Total Calls</th>
                                         <th class="text-end">Answered</th>
                                         <th class="text-end">Answer Rate</th>
                                         <th class="text-end">Avg. Duration</th>
@@ -299,12 +298,8 @@
                         </div>
 
                         <!-- Pagination -->
-                        <div class="d-flex align-items-center justify-content-between mt-24">
-                            <span class="text-secondary-light">Showing {{ $users->firstItem() ?? 0 }} to
-                                {{ $users->lastItem() ?? 0 }} of {{ $users->total() }} entries</span>
-                            <div class="m-0">
-                                {{ $users->links('pagination::bootstrap-5') }}
-                            </div>
+                        <div class="mt-24">
+                            {{ $users->links() }}
                         </div>
 
                     </div>
