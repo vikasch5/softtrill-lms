@@ -391,9 +391,16 @@ class ReportController extends Controller
                         ->pluck('lead_id')
                         ->flip(); // Flip to make lead_id the key for fast array_key_exists
                         
-                    $callHistory->getCollection()->transform(function($item) use ($recordingsMap, $answeredMap) {
+                    $listIdMap = $dialerDb->table('vicidial_list')
+                        ->select('lead_id', 'vendor_lead_code')
+                        ->whereIn('lead_id', $paginatedLeadIds)
+                        ->get()
+                        ->keyBy('lead_id');
+                        
+                    $callHistory->getCollection()->transform(function($item) use ($recordingsMap, $answeredMap, $listIdMap) {
                         $item->recording_filename = $recordingsMap->has($item->lead_id) ? $recordingsMap->get($item->lead_id)->filename : null;
                         $item->is_answered = $answeredMap->has($item->lead_id) ? 1 : 0;
+                        $item->list_id = $listIdMap->has($item->lead_id) ? $listIdMap->get($item->lead_id)->vendor_lead_code : $item->lead_id;
                         return $item;
                     });
                 }
