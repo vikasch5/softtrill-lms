@@ -241,6 +241,27 @@ class ReportController extends Controller
     {
         $userId = $id ?? Auth::id();
         $user = User::with('details.teamleader', 'details.manager', 'details.cluster')->findOrFail($userId);
+        $currentUser = Auth::user();
+
+        // Authorization check
+        if ($userId != $currentUser->id && !$currentUser->hasRole(['Admin', 'admin'])) {
+            $isAuthorized = false;
+            $details = $user->details;
+            
+            if ($details) {
+                if ($currentUser->hasRole(['Cluster', 'cluster']) && $details->cluster_id == $currentUser->id) {
+                    $isAuthorized = true;
+                } elseif ($currentUser->hasRole(['Manager', 'manager']) && $details->manager_id == $currentUser->id) {
+                    $isAuthorized = true;
+                } elseif ($currentUser->hasRole(['TeamLeader', 'teamleader', 'Supervisor', 'supervisor']) && $details->teamleader_id == $currentUser->id) {
+                    $isAuthorized = true;
+                }
+            }
+
+            if (!$isAuthorized) {
+                abort(403, 'Unauthorized access to this report.');
+            }
+        }
         
         [$datePreset, $dateFrom, $dateTo, $dateFromTime, $dateToTime] = $this->resolveDateRange($request);
 

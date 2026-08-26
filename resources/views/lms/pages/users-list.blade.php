@@ -30,11 +30,10 @@
                                     <tr>
                                         <th>ID</th>
                                         <th>Photo</th>
+                                        <th>Emp ID</th>
                                         <th>Email</th>
                                         <th>Role</th>
-                                        <th>Cluster</th>
-                                        <th>Manager</th>
-                                        <th>Team Leader</th>
+                                        <th>Reporting To</th>
                                         <th>Status</th>
                                         <th class="text-center">Action</th>
                                     </tr>
@@ -79,6 +78,7 @@
                                                 </div>
 
                                             </td>
+                                            <td>{{ optional($user->details)->employee_id ?? 'N/A' }}</td>
 
                                             <td>{{ $user->email }}</td>
 
@@ -95,9 +95,22 @@ $role = $user->getRoleNames()->first();
 </span>
 
 </td>
-                                            <td>{{ optional(optional(optional($user)->details)->cluster)->name }}</td>
-                                            <td>{{ optional(optional(optional($user)->details)->manager)->name }}</td>
-                                            <td>{{ optional(optional(optional($user)->details)->teamleader)->name }}</td>
+                                            <td>
+                                                <ul class="list-unstyled mb-0 text-sm">
+                                                    @if(optional(optional($user->details)->cluster)->name)
+                                                        <li><strong>Cluster:</strong> {{ $user->details->cluster->name }}</li>
+                                                    @endif
+                                                    @if(optional(optional($user->details)->manager)->name)
+                                                        <li><strong>Manager:</strong> {{ $user->details->manager->name }}</li>
+                                                    @endif
+                                                    @if(optional(optional($user->details)->teamleader)->name)
+                                                        <li><strong>TL:</strong> {{ $user->details->teamleader->name }}</li>
+                                                    @endif
+                                                    @if(!optional(optional($user->details)->cluster)->name && !optional(optional($user->details)->manager)->name && !optional(optional($user->details)->teamleader)->name)
+                                                        <span class="text-secondary-light">N/A</span>
+                                                    @endif
+                                                </ul>
+                                            </td>
 
 
                                            

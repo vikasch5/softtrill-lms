@@ -109,26 +109,42 @@
                     </div>
                     
                     <!-- Right Meta Info -->
-                    <div class="d-flex flex-wrap align-items-center gap-4 gap-md-5">                        
+                    <div class="d-flex flex-wrap align-items-center gap-4 gap-md-5">
+                        @if(optional(optional($user->details)->cluster)->name)
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="w-32-px h-32-px rounded bg-light-subtle d-flex align-items-center justify-content-center text-primary-main border">
+                                <iconify-icon icon="solar:user-bold"></iconify-icon>
+                            </div>
+                            <div>
+                                <p class="text-xs text-secondary-light mb-0 text-uppercase fw-semibold tracking-wide">Cluster</p>
+                                <h6 class="mb-0 fw-bold text-dark fs-sm text-truncate" style="max-width: 140px;" title="{{ $user->details->cluster->name }}">{{ $user->details->cluster->name }}</h6>
+                            </div>
+                        </div>
+                        @endif
+
+                        @if(optional(optional($user->details)->manager)->name)
                         <div class="d-flex align-items-center gap-2">
                             <div class="w-32-px h-32-px rounded bg-light-subtle d-flex align-items-center justify-content-center text-info-main border">
                                 <iconify-icon icon="solar:user-hands-bold"></iconify-icon>
                             </div>
                             <div>
                                 <p class="text-xs text-secondary-light mb-0 text-uppercase fw-semibold tracking-wide">Manager</p>
-                                <h6 class="mb-0 fw-bold text-dark fs-sm text-truncate" style="max-width: 140px;" title="{{ $user->details->manager->name ?? 'N/A' }}">{{ $user->details->manager->name ?? 'N/A' }}</h6>
+                                <h6 class="mb-0 fw-bold text-dark fs-sm text-truncate" style="max-width: 140px;" title="{{ $user->details->manager->name }}">{{ $user->details->manager->name }}</h6>
                             </div>
                         </div>
+                        @endif
                         
+                        @if(optional(optional($user->details)->teamleader)->name)
                         <div class="d-flex align-items-center gap-2">
                             <div class="w-32-px h-32-px rounded bg-light-subtle d-flex align-items-center justify-content-center text-warning-main border">
                                 <iconify-icon icon="solar:users-group-rounded-bold"></iconify-icon>
                             </div>
                             <div>
                                 <p class="text-xs text-secondary-light mb-0 text-uppercase fw-semibold tracking-wide">Team Leader</p>
-                                <h6 class="mb-0 fw-bold text-dark fs-sm text-truncate" style="max-width: 140px;" title="{{ $user->details->teamleader->name ?? 'N/A' }}">{{ $user->details->teamleader->name ?? 'N/A' }}</h6>
+                                <h6 class="mb-0 fw-bold text-dark fs-sm text-truncate" style="max-width: 140px;" title="{{ $user->details->teamleader->name }}">{{ $user->details->teamleader->name }}</h6>
                             </div>
                         </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -476,8 +492,10 @@
                                         <th>Time</th>
                                         <th>Lead</th>
                                         <th>Call Status</th>
+                                        @hasanyrole('Admin|Manager|Cluster|TeamLeader|Supervisor|admin|manager|cluster|teamleader|supervisor')
                                         <th>Duration</th>
                                         <th class="text-center">Recording</th>
+                                        @endhasanyrole
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -499,6 +517,7 @@
                                             <td class="text-primary-main fw-medium">Lead #{{ $call->lead_id }}</td>
                                         
                                             <td><span class="badge {{ $badgeClass }} rounded-pill px-24 py-4 text-sm">{{ $statusText }}</span></td>
+                                            @hasanyrole('Admin|Manager|Cluster|TeamLeader|Supervisor|admin|manager|cluster|teamleader|supervisor')
                                             <td>{{ gmdate('i:s', $call->talk_sec ?? 0) }}</td>
                                             <td class="text-center">
                                                 @if($isAnswered && ($call->talk_sec > 0))
@@ -520,10 +539,15 @@
                                                     <span class="text-secondary-light">No recording</span>
                                                 @endif
                                             </td>
+                                            @endhasanyrole
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="6" class="text-center py-4 text-secondary-light">No call history available for the selected period.</td>
+                                            @hasanyrole('Admin|Manager|Cluster|TeamLeader|Supervisor|admin|manager|cluster|teamleader|supervisor')
+                                            <td colspan="5" class="text-center py-4 text-secondary-light">No call history available for the selected period.</td>
+                                            @else
+                                            <td colspan="3" class="text-center py-4 text-secondary-light">No call history available for the selected period.</td>
+                                            @endhasanyrole
                                         </tr>
                                     @endforelse
                                 </tbody>

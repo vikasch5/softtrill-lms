@@ -60,29 +60,40 @@
                     <span>Offers</span>
                 </a>
             </li>
+            @endrole
             <li
                 class="dropdown {{ in_array(Route::currentRouteName(), ['lms.performance.report','lms.agent.performance']) ? 'open' : '' }}">
                 <a href="javascript:void(0)">
-                    <iconify-icon icon="solar:pie-chart-outline" class="menu-icon"></iconify-icon>
+                    <iconify-icon icon="solar:document-text-outline" class="menu-icon"></iconify-icon>
                     <span>Report</span>
                 </a>
                 <ul class="sidebar-submenu">
+                    @hasanyrole('Admin|Manager|Cluster|TeamLeader')
                     <li
-                        class="{{ in_array(Route::currentRouteName(), ['lms.performance.report','lms.agent.performance']) ? 'active-page' : '' }}">
+                        class="{{ Route::currentRouteName() == 'lms.performance.report' ? 'active-page' : '' }}">
                         <a href="{{ route('lms.performance.report') }}"
-                            class="{{ in_array(Route::currentRouteName(), ['lms.performance.report','lms.agent.performance']) ? 'active-page' : '' }}"><i
+                            class="{{ Route::currentRouteName() == 'lms.performance.report' ? 'active-page' : '' }}"><i
                                 class="ri-circle-fill circle-icon text-danger-main w-auto"></i>
                             Performance Report</a>
                     </li>
-                    
+                    @endhasanyrole
+                    @hasanyrole('TeamLeader|Agent')
+                    <li
+                        class="{{ Route::currentRouteName() == 'lms.agent.performance' ? 'active-page' : '' }}">
+                        <a href="{{ route('lms.agent.performance') }}"
+                            class="{{ Route::currentRouteName() == 'lms.agent.performance' ? 'active-page' : '' }}"><i
+                                class="ri-circle-fill circle-icon text-danger-main w-auto"></i>
+                            My Performance</a>
+                    </li>
+                    @endhasanyrole
+
                 </ul>
             </li>
-            @endrole
             @role('Admin')
             <li
                 class="dropdown {{ in_array(Route::currentRouteName(), ['lms.dashboard.widgets.list', 'lms.dashboard.widgets.add', 'lms.dashboard.widgets.edit', 'lms.settings.privacy']) ? 'open' : '' }}">
                 <a href="javascript:void(0)">
-                    <iconify-icon icon="solar:pie-chart-outline" class="menu-icon"></iconify-icon>
+                    <iconify-icon icon="solar:settings-outline" class="menu-icon"></iconify-icon>
                     <span>Setting</span>
                 </a>
                 <ul class="sidebar-submenu">
