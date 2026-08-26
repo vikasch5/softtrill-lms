@@ -298,7 +298,9 @@
                         <ul class="list-group list-group-flush">
                             @forelse($callingActivity as $activity)
                                 @php
-                                    $hourFormatted = \Carbon\Carbon::createFromFormat('H', $activity->hour)->format('h A');
+                                    $startHour = \Carbon\Carbon::createFromFormat('H', $activity->hour);
+                                    $endHour = (clone $startHour)->addHour();
+                                    $hourFormatted = $startHour->format('hA') . '-' . $endHour->format('hA');
                                 @endphp
                                 <li class="list-group-item d-flex justify-content-between align-items-center px-0">
                                     <span class="text-secondary-light">{{ $hourFormatted }}</span>
