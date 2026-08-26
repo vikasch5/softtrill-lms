@@ -163,6 +163,21 @@ class ReportController extends Controller
             $query->where('id', $currentUser->id);
             $employeeIdsQuery->where('user_id', $currentUser->id);
         }
+
+        // Apply Hierarchy Filters from Request
+        if ($request->filled('agent_id')) {
+            $query->where('id', $request->agent_id);
+            $employeeIdsQuery->where('user_id', $request->agent_id);
+        } elseif ($request->filled('teamleader_id')) {
+            $query->whereHas('details', function ($sq) use ($request) { $sq->where('teamleader_id', $request->teamleader_id); });
+            $employeeIdsQuery->where('teamleader_id', $request->teamleader_id);
+        } elseif ($request->filled('manager_id')) {
+            $query->whereHas('details', function ($sq) use ($request) { $sq->where('manager_id', $request->manager_id); });
+            $employeeIdsQuery->where('manager_id', $request->manager_id);
+        } elseif ($request->filled('cluster_id')) {
+            $query->whereHas('details', function ($sq) use ($request) { $sq->where('cluster_id', $request->cluster_id); });
+            $employeeIdsQuery->where('cluster_id', $request->cluster_id);
+        }
         
         $users = $query->paginate(10)->appends($request->query());
         
@@ -438,5 +453,41 @@ class ReportController extends Controller
         }
 
         return view('lms.pages.agent-performance', compact('user', 'dateFrom', 'dateTo', 'datePreset', 'dailyPerformance', 'callHistory', 'callingActivity'));
+    }
+
+    /**
+     * API for fetching users in the hierarchy for reports
+     */
+    public function getHierarchyUsers(Request $request)
+    {
+        $role = $request->input('role');
+        $parentId = $request->input('parent_id');
+
+        $query = User::role($role)->select('users.id', 'users.name');
+
+        if ($parentId) {
+            $query->whereHas('details', function ($q) use ($role, $parentId) {
+                if ($role === 'Manager') {
+                    $q->where('cluster_id', $parentId);
+                } elseif ($role === 'TeamLeader') {
+                    $q->where('manager_id', $parentId);
+                } elseif ($role === 'Agent') {
+                    $q->where('teamleader_id', $parentId);
+                }
+            });
+        }
+
+        // Apply auth user visibility restrictions
+        $currentUser = Auth::user();
+        if ($currentUser->hasRole(['Cluster', 'cluster'])) {
+             $query->whereHas('details', function($q) use ($currentUser) { $q->where('cluster_id', $currentUser->id); });
+        } elseif ($currentUser->hasRole(['Manager', 'manager'])) {
+             $query->whereHas('details', function($q) use ($currentUser) { $q->where('manager_id', $currentUser->id); });
+        } elseif ($currentUser->hasRole(['TeamLeader', 'teamleader', 'Supervisor', 'supervisor'])) {
+             $query->whereHas('details', function($q) use ($currentUser) { $q->where('teamleader_id', $currentUser->id); });
+        }
+
+        $users = $query->orderBy('name')->get();
+        return response()->json($users);
     }
 }
