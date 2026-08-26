@@ -16,12 +16,22 @@ class ReportController extends Controller
         $currentUser = Auth::user();
         
         $datePreset = $request->input('date_preset', 'today');
-        if ($datePreset == 'today' || !$request->has('date_from')) {
+        
+        if ($datePreset == 'today') {
             $dateFrom = Carbon::today()->toDateString();
             $dateTo = Carbon::today()->toDateString();
+        } elseif ($datePreset == 'yesterday') {
+            $dateFrom = Carbon::yesterday()->toDateString();
+            $dateTo = Carbon::yesterday()->toDateString();
+        } elseif ($datePreset == 'this_week') {
+            $dateFrom = Carbon::now()->startOfWeek()->toDateString();
+            $dateTo = Carbon::today()->toDateString();
+        } elseif ($datePreset == 'this_month') {
+            $dateFrom = Carbon::now()->startOfMonth()->toDateString();
+            $dateTo = Carbon::today()->toDateString();
         } else {
-            $dateFrom = $request->input('date_from', Carbon::today()->toDateString());
-            $dateTo = $request->input('date_to', Carbon::today()->toDateString());
+            $dateFrom = $request->input('date_from') ?: Carbon::today()->toDateString();
+            $dateTo = $request->input('date_to') ?: Carbon::today()->toDateString();
         }
 
         $query = User::with('details.teamleader', 'details.manager');
@@ -45,7 +55,7 @@ class ReportController extends Controller
             $query->where('id', $currentUser->id);
         }
         
-        $users = $query->get();
+        $users = $query->paginate(10)->appends($request->query());
         // dd($users->toArray());
         
         try {
@@ -99,12 +109,22 @@ class ReportController extends Controller
         $user = User::with('details.teamleader', 'details.manager', 'details.cluster')->findOrFail($userId);
         
         $datePreset = $request->input('date_preset', 'today');
-        if ($datePreset == 'today' || !$request->has('date_from')) {
+        
+        if ($datePreset == 'today') {
             $dateFrom = Carbon::today()->toDateString();
             $dateTo = Carbon::today()->toDateString();
+        } elseif ($datePreset == 'yesterday') {
+            $dateFrom = Carbon::yesterday()->toDateString();
+            $dateTo = Carbon::yesterday()->toDateString();
+        } elseif ($datePreset == 'this_week') {
+            $dateFrom = Carbon::now()->startOfWeek()->toDateString();
+            $dateTo = Carbon::today()->toDateString();
+        } elseif ($datePreset == 'this_month') {
+            $dateFrom = Carbon::now()->startOfMonth()->toDateString();
+            $dateTo = Carbon::today()->toDateString();
         } else {
-            $dateFrom = $request->input('date_from', Carbon::today()->toDateString());
-            $dateTo = $request->input('date_to', Carbon::today()->toDateString());
+            $dateFrom = $request->input('date_from') ?: Carbon::today()->toDateString();
+            $dateTo = $request->input('date_to') ?: Carbon::today()->toDateString();
         }
 
         $employeeId = $user->details->employee_id ?? null;
@@ -132,27 +152,51 @@ class ReportController extends Controller
                 // Get Daily Performance
                 $dailyPerformance = $dialerDb->select("
                     SELECT 
-                        DATE(v.event_time) as date,
-                        COUNT(DISTINCT v.agent_log_id) as total_calls,
-                        COUNT(DISTINCT c.uniqueid) as answered_calls,
-                        SUM(CASE WHEN v.talk_sec >= 120 THEN 1 ELSE 0 END) as calls_gt_2min,
-                        SUM(v.talk_sec) as talk_sec,
-                        SUM(v.pause_sec) as pause_sec,
-                        SUM(v.wait_sec) as wait_sec,
-                        SUM(v.dispo_sec) as dispo_sec,
-                        SUM(v.dead_sec) as dead_sec
-                    FROM vicidial_agent_log v
-                    LEFT JOIN vicidial_carrier_log c ON v.lead_id = c.lead_id AND DATE(c.call_date) = DATE(v.event_time)
-                    WHERE v.user = ?
-                    AND DATE(v.event_time) >= ?
-                    AND DATE(v.event_time) <= ?
-                    GROUP BY DATE(v.event_time)
-                    ORDER BY date DESC
-                ", [$employeeId, $dateFrom, $dateTo]);
+                        base.date,
+                        base.total_calls,
+                        IFNULL(ans.answered_calls, 0) as answered_calls,
+                        base.calls_gt_2min,
+                        base.talk_sec,
+                        base.pause_sec,
+                        base.wait_sec,
+                        base.dispo_sec,
+                        base.dead_sec
+                    FROM (
+                        SELECT 
+                            DATE(event_time) as date,
+                            COUNT(agent_log_id) as total_calls,
+                            SUM(CASE WHEN talk_sec >= 120 THEN 1 ELSE 0 END) as calls_gt_2min,
+                            SUM(talk_sec) as talk_sec,
+                            SUM(pause_sec) as pause_sec,
+                            SUM(wait_sec) as wait_sec,
+                            SUM(dispo_sec) as dispo_sec,
+                            SUM(dead_sec) as dead_sec
+                        FROM vicidial_agent_log
+                        WHERE user = ?
+                        AND DATE(event_time) >= ?
+                        AND DATE(event_time) <= ?
+                        GROUP BY DATE(event_time)
+                    ) base
+                    LEFT JOIN (
+                        SELECT 
+                            DATE(v2.event_time) as date,
+                            COUNT(DISTINCT v2.agent_log_id) as answered_calls
+                        FROM vicidial_agent_log v2
+                        JOIN vicidial_carrier_log c ON v2.lead_id = c.lead_id AND DATE(c.call_date) = DATE(v2.event_time)
+                        WHERE v2.user = ?
+                        AND DATE(v2.event_time) >= ?
+                        AND DATE(v2.event_time) <= ?
+                        GROUP BY DATE(v2.event_time)
+                    ) ans ON base.date = ans.date
+                    ORDER BY base.date DESC
+                ", [$employeeId, $dateFrom, $dateTo, $employeeId, $dateFrom, $dateTo]);
                 
                 // Get Call History
                 $callHistory = $dialerDb->table('vicidial_agent_log')
-                    ->leftJoin('vicidial_carrier_log', 'vicidial_agent_log.lead_id', '=', 'vicidial_carrier_log.lead_id')
+                    ->leftJoin('vicidial_carrier_log', function($join) {
+                        $join->on('vicidial_agent_log.lead_id', '=', 'vicidial_carrier_log.lead_id')
+                             ->whereRaw('DATE(vicidial_carrier_log.call_date) = DATE(vicidial_agent_log.event_time)');
+                    })
                     ->select(
                         'vicidial_agent_log.agent_log_id',
                         'vicidial_agent_log.event_time', 
@@ -213,11 +257,14 @@ class ReportController extends Controller
             ->count();
 
         $answeredCalls = $dialerDb->table('vicidial_agent_log')
-            ->join('vicidial_carrier_log', 'vicidial_agent_log.lead_id', '=', 'vicidial_carrier_log.lead_id')
+            ->join('vicidial_carrier_log', function($join) {
+                $join->on('vicidial_agent_log.lead_id', '=', 'vicidial_carrier_log.lead_id')
+                     ->whereRaw('DATE(vicidial_carrier_log.call_date) = DATE(vicidial_agent_log.event_time)');
+            })
             ->where('vicidial_agent_log.user', $employeeId)
             ->whereDate('vicidial_agent_log.event_time', '>=', $dateFrom)
             ->whereDate('vicidial_agent_log.event_time', '<=', $dateTo)
-            ->count();
+            ->count(DB::raw('DISTINCT vicidial_agent_log.agent_log_id'));
             
         $callsGt2Min = $dialerDb->table('vicidial_agent_log')
             ->where('user', $employeeId)

@@ -369,11 +369,11 @@
                                 <span class="text-secondary-light">Talk Time</span>
                                 <span class="fw-medium text-primary-main">{{ floor(($user->talk_sec ?? 0) / 3600) . 'h ' . gmdate('i\m', $user->talk_sec ?? 0) }}</span>
                             </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center px-0 mt-3 pt-3 border-top">
+                            {{-- <li class="list-group-item d-flex justify-content-between align-items-center px-0 mt-3 pt-3 border-top">
                                 <span class="text-secondary-light">Calls / Hour</span>
                                 <span class="fw-bold fs-5">{{ number_format($user->calls_per_hour ?? 0, 1) }}</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center px-0 border-bottom-0">
+                            </li> --}}
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0 mt-3 pt-3 border-top border-bottom-0">
                                 <span class="text-secondary-light">Answered / Hour</span>
                                 <span class="fw-bold fs-5 text-success-main">{{ $answeredPerHour }}</span>
                             </li>
@@ -404,7 +404,7 @@
                                         <th class="text-end">Login Hours</th>
                                         <th class="text-end">Pause</th>
                                         <th class="text-end">Talk Time</th>
-                                        <th class="text-end">Calls / Hour</th>
+                                        {{-- <th class="text-end">Calls / Hour</th> --}}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -429,7 +429,7 @@
                                             <td class="text-end">{{ floor($dayLoginSec / 3600) . 'h ' . gmdate('i\m', $dayLoginSec) }}</td>
                                             <td class="text-end">{{ floor($day->pause_sec / 3600) . 'h ' . gmdate('i\m', $day->pause_sec) }}</td>
                                             <td class="text-end fw-medium text-dark">{{ floor($day->talk_sec / 3600) . 'h ' . gmdate('i\m', $day->talk_sec) }}</td>
-                                            <td class="text-end">{{ number_format($dayCallsPerHour, 1) }}</td>
+                                            {{-- <td class="text-end">{{ number_format($dayCallsPerHour, 1) }}</td> --}}
                                         </tr>
                                     @empty
                                         <tr>
