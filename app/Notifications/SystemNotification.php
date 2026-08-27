@@ -1,0 +1,42 @@
+<?php
+
+namespace App\Notifications;
+
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Notification;
+
+class SystemNotification extends Notification
+{
+    use Queueable;
+
+    protected $data;
+
+    /**
+     * Create a new notification instance.
+     */
+    public function __construct(array $data)
+    {
+        $this->data = $data;
+    }
+
+    /**
+     * Get the notification's delivery channels.
+     *
+     * @return array<int, string>
+     */
+    public function via(object $notifiable): array
+    {
+        return ['database']; // We handle Web Push separately via Jobs, or we could add a custom channel here. Let's keep them separated as per architecture.
+    }
+
+    /**
+     * Get the array representation of the notification.
+     *
+     * @return array<string, mixed>
+     */
+    public function toDatabase(object $notifiable): array
+    {
+        return $this->data;
+    }
+}

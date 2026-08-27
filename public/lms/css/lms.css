@@ -25,9 +25,9 @@
     --followup-today-bg: linear-gradient(135deg, #e8fff1 0%, #c9f7dc 100%);
     --followup-today-icon: #0f9f57;
     --followup-today-ring: rgba(15, 159, 87, 0.18);
-    --followup-pending-bg: linear-gradient(135deg, #fff2e8 0%, #ffd7bd 100%);
-    --followup-pending-icon: #e06a11;
-    --followup-pending-ring: rgba(224, 106, 17, 0.18);
+    --followup-missed-bg: linear-gradient(135deg, #fff0f0 0%, #ffd4d4 100%);
+    --followup-missed-icon: #dc2626;
+    --followup-missed-ring: rgba(220, 38, 38, 0.18);
     --followup-upcoming-bg: linear-gradient(135deg, #edf4ff 0%, #cfe0ff 100%);
     --followup-upcoming-icon: #2c66f0;
     --followup-upcoming-ring: rgba(44, 102, 240, 0.18);
@@ -131,14 +131,14 @@
     box-shadow: 0 0 0 6px var(--followup-today-ring);
 }
 
-.header-followup-card.pending::before {
-    background: var(--followup-pending-bg);
+.header-followup-card.missed::before {
+    background: var(--followup-missed-bg);
 }
 
-.header-followup-card.pending .header-followup-icon {
+.header-followup-card.missed .header-followup-icon {
     background: rgba(255, 255, 255, 0.64);
-    color: var(--followup-pending-icon);
-    box-shadow: 0 0 0 6px var(--followup-pending-ring);
+    color: var(--followup-missed-icon);
+    box-shadow: 0 0 0 6px var(--followup-missed-ring);
 }
 
 .header-followup-card.upcoming::before {

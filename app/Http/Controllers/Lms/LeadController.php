@@ -80,10 +80,12 @@ class LeadController extends Controller
 
         if ($request->filled('followup_status')) {
             $today = \Carbon\Carbon::today();
+            $now = \Carbon\Carbon::now();
             if ($request->followup_status === 'today') {
-                $query->whereDate('next_followup_at', $today);
-            } elseif ($request->followup_status === 'pending') {
-                $query->where('next_followup_at', '<', $today->copy()->startOfDay());
+                $query->whereDate('next_followup_at', $today)
+                      ->where('next_followup_at', '>=', $now);
+            } elseif ($request->followup_status === 'missed') {
+                $query->where('next_followup_at', '<', $now);
             } elseif ($request->followup_status === 'upcoming') {
                 $query->where('next_followup_at', '>', $today->copy()->endOfDay());
             }
@@ -265,10 +267,12 @@ class LeadController extends Controller
 
         if ($request->filled('followup_status')) {
             $today = \Carbon\Carbon::today();
+            $now = \Carbon\Carbon::now();
             if ($request->followup_status === 'today') {
-                $query->whereDate('next_followup_at', $today);
-            } elseif ($request->followup_status === 'pending') {
-                $query->where('next_followup_at', '<', $today->copy()->startOfDay());
+                $query->whereDate('next_followup_at', $today)
+                      ->where('next_followup_at', '>=', $now);
+            } elseif ($request->followup_status === 'missed') {
+                $query->where('next_followup_at', '<', $now);
             } elseif ($request->followup_status === 'upcoming') {
                 $query->where('next_followup_at', '>', $today->copy()->endOfDay());
             }

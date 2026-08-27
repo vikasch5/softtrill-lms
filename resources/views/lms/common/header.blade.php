@@ -33,13 +33,13 @@
                         </div>
                     </div>
                 </a>
-                <a href="{{ route('lms.leads', ['followup_status' => 'pending']) }}"
+                <a href="{{ route('lms.leads', ['followup_status' => 'missed']) }}"
                     style="text-decoration: none; color: inherit;">
-                    <div class="header-followup-card pending">
+                    <div class="header-followup-card missed">
                         <div class="header-followup-content">
-                            <div class="header-followup-label">Pending Followups <span
+                            <div class="header-followup-label">Missed Followups <span
                                     class="header-followup-separator">:</span></div>
-                            <div class="header-followup-value">{{ $headerFollowupStats['pending'] ?? 0 }}</div>
+                            <div class="header-followup-value">{{ $headerFollowupStats['missed'] ?? 0 }}</div>
                         </div>
                     </div>
                 </a>
@@ -89,31 +89,11 @@
                                 <h6 class="text-lg text-primary-light fw-semibold mb-0">Notifications</h6>
                             </div>
                             <span
-                                class="text-primary-600 fw-semibold text-lg w-40-px h-40-px rounded-circle bg-base d-flex justify-content-center align-items-center">0</span>
+                                class="text-primary-600 fw-semibold text-lg w-40-px h-40-px rounded-circle bg-base d-flex justify-content-center align-items-center notification-count-badge" style="display: none;">0</span>
                         </div>
 
-                        <div class="max-h-400-px overflow-y-auto scroll-sm pe-4">
-                            {{-- <a href="javascript:void(0)"
-                                class="px-24 py-12 d-flex align-items-start gap-3 mb-2 justify-content-between">
-                                <div
-                                    class="text-black hover-bg-transparent hover-text-primary d-flex align-items-center gap-3">
-                                    <span
-                                        class="w-44-px h-44-px bg-success-subtle text-success-main rounded-circle d-flex justify-content-center align-items-center flex-shrink-0">
-                                        <iconify-icon icon="bitcoin-icons:verify-outline"
-                                            class="icon text-xxl"></iconify-icon>
-                                    </span>
-                                    <div>
-                                        <h6 class="text-md fw-semibold mb-4">Congratulations</h6>
-                                        <p class="mb-0 text-sm text-secondary-light text-w-200-px">Your profile has been
-                                            Verified. Your
-                                            profile has been Verified</p>
-                                    </div>
-                                </div>
-                                <span class="text-sm text-secondary-light flex-shrink-0">23 Mins ago</span>
-                            </a> --}}
-                            <span
-                                class="text-sm text-secondary-light flex-shrink-0 px-24 py-12 d-flex align-items-start gap-3 mb-2 justify-content-between">No
-                                notifications found</span>
+                        <div class="max-h-400-px overflow-y-auto scroll-sm pe-4" id="notification-list-container">
+                            <span class="text-sm text-secondary-light flex-shrink-0 px-24 py-12 d-flex align-items-start gap-3 mb-2 justify-content-between">Loading...</span>
                         </div>
 
                         {{-- <div class="text-center py-12 px-16">
@@ -143,6 +123,11 @@
                             </button>
                         </div>
                         <ul class="to-top-list">
+                            <li>
+                                <a class="dropdown-item text-black px-0 py-8 hover-bg-transparent hover-text-primary d-flex align-items-center gap-3"
+                                    href="#" data-bs-toggle="modal" data-bs-target="#notificationSettingsModal">
+                                    <iconify-icon icon="iconoir:bell" class="icon text-xl"></iconify-icon> Notification Settings</a>
+                            </li>
                             {{-- <li>
                                 <a class="dropdown-item text-black px-0 py-8 hover-bg-transparent hover-text-primary d-flex align-items-center gap-3"
                                     href="view-profile.html">
@@ -169,6 +154,49 @@
                         </ul>
                     </div>
                 </div><!-- Profile dropdown end -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Notification Settings Modal -->
+<div class="modal fade" id="notificationSettingsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Notification Settings</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="pref_browser_notifications" {{ env('VAPID_PUBLIC_KEY') ? '' : 'disabled' }}>
+                    <label class="form-check-label" for="pref_browser_notifications">Browser Push Notifications</label>
+                </div>
+                <hr>
+                <h6>In-App Notifications</h6>
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input pref-toggle" type="checkbox" id="pref_followup_due" data-key="followup_due" {{ (auth()->user()->notification_preferences['followup_due'] ?? true) ? 'checked' : '' }}>
+                    <label class="form-check-label" for="pref_followup_due">Follow-up Due</label>
+                </div>
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input pref-toggle" type="checkbox" id="pref_upcoming_followup" data-key="upcoming_followup" {{ (auth()->user()->notification_preferences['upcoming_followup'] ?? true) ? 'checked' : '' }}>
+                    <label class="form-check-label" for="pref_upcoming_followup">Upcoming Follow-up</label>
+                </div>
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input pref-toggle" type="checkbox" id="pref_overdue_followup" data-key="overdue_followup" {{ (auth()->user()->notification_preferences['overdue_followup'] ?? true) ? 'checked' : '' }}>
+                    <label class="form-check-label" for="pref_overdue_followup">Overdue Follow-up</label>
+                </div>
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input pref-toggle" type="checkbox" id="pref_lead_assigned" data-key="lead_assigned" {{ (auth()->user()->notification_preferences['lead_assigned'] ?? true) ? 'checked' : '' }}>
+                    <label class="form-check-label" for="pref_lead_assigned">New Lead Assigned</label>
+                </div>
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input pref-toggle" type="checkbox" id="pref_lead_reassigned" data-key="lead_reassigned" {{ (auth()->user()->notification_preferences['lead_reassigned'] ?? true) ? 'checked' : '' }}>
+                    <label class="form-check-label" for="pref_lead_reassigned">Lead Reassigned</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="save-notification-prefs-btn">Save Preferences</button>
             </div>
         </div>
     </div>
@@ -248,3 +276,8 @@
   </div>
 </div>
 @endif
+
+<script>
+    window.NotificationSystem = window.NotificationSystem || {};
+    window.NotificationSystem.vapidPublicKey = "{{ env('VAPID_PUBLIC_KEY') }}";
+</script>

@@ -180,3 +180,8 @@ Artisan::command('leads:sample
 
     return self::SUCCESS;
 })->purpose('Generate a large number of sample leads with Faker');
+
+use Illuminate\Support\Facades\Schedule;
+use App\Jobs\ProcessFollowupNotifications;
+
+Schedule::job(new ProcessFollowupNotifications)->everyMinute();

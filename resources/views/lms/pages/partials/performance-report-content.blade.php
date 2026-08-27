@@ -156,17 +156,25 @@
                                                 <div class="d-flex align-items-center">
                                                     <div class="flex-grow-1">
                                                         <h6 class="text-md mb-0 fw-normal">{{ $user->name }}</h6>
-                                                        <span class="text-sm text-secondary-light fw-normal">Agent
-                                                            #{{ $user->details->employee_id ?? $user->id }}</span>
+                                                        <span class="text-sm text-secondary-light fw-normal">Emp Id
+                                                            #{{ $user->details->employee_id ?? '' }}</span>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td>
                                                 <div class="d-flex flex-column text-sm text-secondary-light">
-                                                    <span><strong>TL:</strong>
-                                                        {{ $user->details->teamleader->name ?? 'N/A' }}</span>
-                                                    <span><strong>Mgr:</strong>
-                                                        {{ $user->details->manager->name ?? 'N/A' }}</span>
+                                                    @if(optional(optional($user->details)->cluster)->name)
+                                                        <span><strong>Cluster:</strong> {{ $user->details->cluster->name }}</span>
+                                                    @endif
+                                                    @if(optional(optional($user->details)->manager)->name)
+                                                        <span><strong>Mgr:</strong> {{ $user->details->manager->name }}</span>
+                                                    @endif
+                                                    @if(optional(optional($user->details)->teamleader)->name)
+                                                        <span><strong>TL:</strong> {{ $user->details->teamleader->name }}</span>
+                                                    @endif
+                                                    @if(!optional(optional($user->details)->cluster)->name && !optional(optional($user->details)->manager)->name && !optional(optional($user->details)->teamleader)->name)
+                                                        <span>N/A</span>
+                                                    @endif
                                                 </div>
                                             </td>
                                             <td class="text-end fw-bold">{{ $user->total_calls }}</td>

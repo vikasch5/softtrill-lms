@@ -84,6 +84,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/settings/privacy', [SettingsController::class, 'privacyIndex'])->name('lms.settings.privacy');
     Route::post('/settings/privacy', [SettingsController::class, 'privacyUpdate'])->name('lms.settings.privacy.update');
     Route::post('/settings/privacy/preview', [SettingsController::class, 'privacyPreview'])->name('lms.settings.privacy.preview');
+    // Notifications
+    Route::get('/notifications/fetch', [App\Http\Controllers\Lms\NotificationController::class, 'fetch'])->name('lms.notifications.fetch');
+    Route::post('/notifications/read-all', [App\Http\Controllers\Lms\NotificationController::class, 'markAllAsRead'])->name('lms.notifications.read-all');
+    Route::post('/notifications/{id}/read', [App\Http\Controllers\Lms\NotificationController::class, 'markAsRead'])->name('lms.notifications.read');
+    Route::post('/notifications/push/subscribe', [App\Http\Controllers\Lms\NotificationController::class, 'subscribePush'])->name('lms.notifications.push.subscribe');
+    Route::post('/notifications/push/unsubscribe', [App\Http\Controllers\Lms\NotificationController::class, 'unsubscribePush'])->name('lms.notifications.push.unsubscribe');
+    Route::post('/notifications/preferences', [App\Http\Controllers\Lms\NotificationController::class, 'updatePreferences'])->name('lms.notifications.preferences');
+
 });
 
 /*
