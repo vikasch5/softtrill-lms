@@ -58,7 +58,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/feedbacks/sub-feedbacks/{feedbackId}', [App\Http\Controllers\Lms\FeedbackController::class, 'subFeedbacks'])->name('lms.feedbacks.sub-feedbacks');
 
     Route::get('/performance-report', [ReportController::class, 'report'])->name('lms.performance.report');
+    Route::get('/performance-report/export', [ReportController::class, 'export'])->name('lms.performance.report.export');
     Route::get('/agent-performance/{id?}', [ReportController::class, 'agentPerformance'])->name('lms.agent.performance');
+    Route::get('/agent-performance/{id}/export', [ReportController::class, 'exportAgentPerformance'])->name('lms.agent.performance.export');
 
     Route::get('/dashboard-widget-list', [DashboardController::class, 'widgetsList'])->name('lms.dashboard.widgets.list');
     Route::get('/dashboard-widget', [DashboardController::class, 'dashboardWidget'])->name('lms.dashboard.widgets');

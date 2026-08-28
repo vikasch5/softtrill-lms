@@ -185,3 +185,11 @@ use Illuminate\Support\Facades\Schedule;
 use App\Jobs\ProcessFollowupNotifications;
 
 Schedule::job(new ProcessFollowupNotifications)->everyMinute();
+
+// Auto-prune read notifications older than 30 days to keep the database fast
+Schedule::call(function () {
+    DB::table('notifications')
+        ->where('read_at', '!=', null)
+        ->where('created_at', '<', now()->subDays(30))
+        ->delete();
+})->daily();

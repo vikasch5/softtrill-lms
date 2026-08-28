@@ -34,6 +34,12 @@ class SendLeadAssignedNotification implements ShouldQueue
             'target_url' => route('lms.lead.view', $event->lead->lead_id),
             'icon' => 'iconoir:user-plus',
             'priority' => 'normal',
+            'actions' => [
+                [
+                    'action' => 'view',
+                    'title' => 'View Lead'
+                ]
+            ]
         ];
 
         if ($notificationService->send($event->user, $payload)) {

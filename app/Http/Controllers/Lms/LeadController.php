@@ -1142,14 +1142,32 @@ class LeadController extends Controller
                 ], 403);
             }
 
+            $leadsToAssign = Lead::whereIn('id', $leadIds)->get();
+
             Lead::whereIn('id', $leadIds)->update([
                 'assigned_to' => $assignedUser->id,
             ]);
 
-            foreach ($leadIds as $leadId) {
+            $assignedCount = 0;
+            $reassignedCount = 0;
+            $singleLead = null;
+            $singleIsReassignment = false;
+
+            foreach ($leadsToAssign as $lead) {
+                $isReassignment = !empty($lead->assigned_to) && $lead->assigned_to != $assignedUser->id;
+
+                if ($isReassignment) {
+                    $reassignedCount++;
+                } else {
+                    $assignedCount++;
+                }
+
+                $singleLead = $lead;
+                $singleIsReassignment = $isReassignment;
+
                 LeadActivityLog::create([
                     'tenant_id' => $tenantId ?? auth()->id(),
-                    'lead_id' => $leadId,
+                    'lead_id' => $lead->id,
                     'added_by' => auth()->id(),
                     'activity' => 'lead_assigned',
                     'old_value' => null,
@@ -1160,6 +1178,44 @@ class LeadController extends Controller
                         'user_name' => $assignedUser->name,
                     ]),
                 ]);
+            }
+
+            if (count($leadsToAssign) === 1 && $singleLead) {
+                // Single assignment
+                $singleLead->assigned_to = $assignedUser->id;
+                event(new \App\Events\LeadAssigned($singleLead, $assignedUser, $user, $singleIsReassignment));
+            } elseif (count($leadsToAssign) > 1) {
+                // Bulk assignment notifications
+                $notificationService = app(\App\Services\NotificationService::class);
+                $pushService = app(\App\Services\PushNotificationService::class);
+
+                if ($assignedCount > 0) {
+                    $payload = [
+                        'type' => 'lead_assigned',
+                        'title' => 'New Leads Assigned',
+                        'message' => "{$assignedCount} new leads have been assigned to you.",
+                        'target_url' => route('lms.leads'),
+                        'icon' => 'iconoir:user-plus',
+                        'priority' => 'normal',
+                    ];
+                    if ($notificationService->send($assignedUser, $payload)) {
+                        $pushService->dispatchToUser($assignedUser, $payload);
+                    }
+                }
+
+                if ($reassignedCount > 0) {
+                    $payload = [
+                        'type' => 'lead_reassigned',
+                        'title' => 'Leads Reassigned',
+                        'message' => "{$reassignedCount} leads have been reassigned to you.",
+                        'target_url' => route('lms.leads'),
+                        'icon' => 'iconoir:user-plus',
+                        'priority' => 'normal',
+                    ];
+                    if ($notificationService->send($assignedUser, $payload)) {
+                        $pushService->dispatchToUser($assignedUser, $payload);
+                    }
+                }
             }
 
             DB::commit();

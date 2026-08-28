@@ -2,6 +2,11 @@ const NotificationSystem = {
     vapidPublicKey: null, // Should be injected into the window object via Blade
     
     init: function() {
+        // Grab the key injected from blade
+        if (window.NotificationSystem && window.NotificationSystem.vapidPublicKey) {
+            this.vapidPublicKey = window.NotificationSystem.vapidPublicKey;
+        }
+
         if (!('Notification' in window)) {
             console.warn('This browser does not support desktop notification');
             return;
@@ -17,6 +22,41 @@ const NotificationSystem = {
                 }, function(err) {
                     console.log('ServiceWorker registration failed: ', err);
                 });
+
+            // Listen for messages from the service worker (e.g., when a push notification arrives)
+            navigator.serviceWorker.addEventListener('message', function(event) {
+                if (event.data && event.data.type === 'NEW_PUSH_NOTIFICATION') {
+                    // Play the custom sound for all new pushes
+                    NotificationSystem.playAlertSound();
+                    
+                    // Instantly refresh the UI to show the new notification without waiting for the 60s poll
+                    NotificationSystem.fetchNotifications();
+                }
+            });
+            
+            // Automatically prompt for push notifications on first visit if not disabled
+            // Browsers like Firefox and Edge block prompts that don't originate from a user gesture.
+            // We bind it to the very first click on the document to ensure the prompt is allowed.
+            if (Notification.permission === 'default' && localStorage.getItem('push_prompt_disabled') !== 'true') {
+                const _this = this;
+                
+                const promptPushPermission = function() {
+                    // Remove listener so it only fires once
+                    document.removeEventListener('click', promptPushPermission);
+                    
+                    _this.subscribeUser().then(() => {
+                        // Success, they allowed it
+                        $('#pref_browser_notifications').prop('checked', true);
+                    }).catch((err) => {
+                        // They blocked or ignored it
+                        console.log('User declined or blocked auto-prompt');
+                        localStorage.setItem('push_prompt_disabled', 'true');
+                    });
+                };
+                
+                // Wait for the user's first interaction with the page
+                document.addEventListener('click', promptPushPermission);
+            }
         }
     },
 
@@ -46,7 +86,10 @@ const NotificationSystem = {
         });
     },
 
+    lastSeenNotificationId: null,
+
     fetchNotifications: function() {
+        const _this = this;
         $.ajax({
             url: '/notifications/fetch',
             type: 'GET',
@@ -62,10 +105,25 @@ const NotificationSystem = {
 
                 if (response.notifications) {
                     let html = '';
+                    let hasNewHighPriority = false;
+
                     if (response.notifications.length === 0) {
                         html = `<span class="text-sm text-secondary-light flex-shrink-0 px-24 py-12 d-flex align-items-start gap-3 mb-2 justify-content-between">No notifications found</span>`;
                     } else {
                         response.notifications.forEach(function(notif) {
+                            if (_this.lastSeenNotificationId !== null && notif.id !== _this.lastSeenNotificationId) {
+                                // Check if this is a new high priority notification we haven't seen in this session
+                                if (notif.priority === 'high' && (!_this.lastSeenNotificationIds || !_this.lastSeenNotificationIds.includes(notif.id))) {
+                                    hasNewHighPriority = true;
+                                }
+                            }
+                            
+                            // Keep track of seen IDs to avoid playing sound on every poll
+                            if (!_this.lastSeenNotificationIds) _this.lastSeenNotificationIds = [];
+                            if (!_this.lastSeenNotificationIds.includes(notif.id)) {
+                                _this.lastSeenNotificationIds.push(notif.id);
+                            }
+
                             html += `
                                 <a href="${notif.url}" class="px-24 py-12 d-flex align-items-start gap-3 mb-2 justify-content-between">
                                     <div class="text-black hover-bg-transparent hover-text-primary d-flex align-items-center gap-3">
@@ -94,9 +152,38 @@ const NotificationSystem = {
                     }
                     
                     $('#notification-list-container').html(html);
+
+                    if (response.notifications.length > 0) {
+                        _this.lastSeenNotificationId = response.notifications[0].id;
+                    }
+
+                    if (hasNewHighPriority) {
+                        _this.playAlertSound();
+                    }
                 }
             }
         });
+    },
+
+    playAlertSound: function() {
+        try {
+            // console.log("Playing alert sound...");
+            const audio = new Audio('/audio/notify.mp3');
+            const playPromise = audio.play();
+            
+            if (playPromise !== undefined) {
+                playPromise.catch(function(error) {
+                    // console.log('Autoplay prevented by browser. User must interact with the page first.', error);
+                    /* 
+                    if (typeof notify_it === 'function') {
+                        notify_it('warning', 'Browser blocked notification sound. Please click anywhere on the page to enable sounds.');
+                    }
+                    */
+                });
+            }
+        } catch(e) {
+            // console.error('Error playing sound', e);
+        }
     },
 
     markAsRead: function(id) {
@@ -198,19 +285,32 @@ const NotificationSystem = {
 
         // Handle Browser Push toggle
         $('#pref_browser_notifications').on('change', function() {
-            if ($(this).is(':checked')) {
+            const $toggle = $(this);
+            $toggle.prop('disabled', true);
+
+            if ($toggle.is(':checked')) {
+                notify_it('info', 'Enabling push notifications, please wait...');
+                
                 _this.subscribeUser().then(() => {
-                    alert('Browser push notifications enabled!');
+                    notify_it('success', 'Browser push notifications enabled!');
+                    $toggle.prop('disabled', false);
+                    localStorage.removeItem('push_prompt_disabled');
                 }).catch((err) => {
                     console.error(err);
-                    alert('Failed to enable push notifications. Check browser permissions.');
-                    $(this).prop('checked', false);
+                    notify_it('error', 'Failed to enable push notifications. Check browser permissions.');
+                    $toggle.prop('checked', false).prop('disabled', false);
+                    localStorage.setItem('push_prompt_disabled', 'true');
                 });
             } else {
+                notify_it('info', 'Disabling push notifications...');
+                
                 _this.unsubscribeUser().then(() => {
-                    alert('Browser push notifications disabled.');
+                    notify_it('success', 'Browser push notifications disabled.');
+                    $toggle.prop('disabled', false);
+                    localStorage.setItem('push_prompt_disabled', 'true');
                 }).catch((err) => {
                     console.error(err);
+                    $toggle.prop('disabled', false);
                 });
             }
         });
@@ -240,7 +340,7 @@ const NotificationSystem = {
                     }, 1000);
                 },
                 error: function() {
-                    alert('Failed to save preferences.');
+                    notify_it('error', 'Failed to save preferences.');
                     btn.text('Save Preferences').prop('disabled', false);
                 }
             });

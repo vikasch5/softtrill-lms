@@ -74,6 +74,12 @@ class ProcessFollowupNotifications implements ShouldQueue
                                 'icon' => 'iconoir:warning-triangle',
                                 'priority' => 'high',
                                 'dedup_key' => $dedupKey,
+                                'actions' => [
+                                    [
+                                        'action' => 'view',
+                                        'title' => 'View Leads'
+                                    ]
+                                ]
                             ];
 
                             if ($notificationService->send($user, $payload)) {
@@ -110,6 +116,12 @@ class ProcessFollowupNotifications implements ShouldQueue
             'icon' => 'iconoir:calendar',
             'priority' => ($type == 'followup_due') ? 'high' : 'normal',
             'dedup_key' => $dedupKey,
+            'actions' => [
+                [
+                    'action' => 'view',
+                    'title' => 'View Lead'
+                ]
+            ]
         ];
 
         if ($notificationService->send($user, $payload)) {

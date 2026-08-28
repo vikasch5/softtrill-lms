@@ -33,15 +33,15 @@
                 <p class="text-secondary-light mb-0">Monitor agent calling activity and productivity</p>
             </div>
             <div class="d-flex align-items-center gap-2">
-                <!-- Reuse existing button styles if applicable -->
+                <!-- Reuse existing button styles if applicable --> 
                 <button class="btn btn-outline-primary d-flex align-items-center gap-2" type="button"
                     data-bs-toggle="collapse" data-bs-target="#performanceFiltersCollapse" aria-expanded="false"
                     aria-controls="performanceFiltersCollapse">
                     <iconify-icon icon="lucide:filter" class="text-xl"></iconify-icon> Filter
                 </button>
-                {{-- <button class="btn btn-primary d-flex align-items-center gap-2">
+                <button id="exportPerformanceBtn" class="btn btn-primary d-flex align-items-center gap-2">
                     <iconify-icon icon="file-icons:microsoft-excel" class="text-xl"></iconify-icon> Export
-                </button> --}}
+                </button>
             </div>
         </div>
 
@@ -234,6 +234,31 @@
     $(document).on('submit', '#globalFiltersForm', function (e) {
         e.preventDefault();
         fetchAjaxContent($(this).attr('action'), $(this).serialize());
+    });
+    
+    // Handle Export Button
+    $(document).on('click', '#exportPerformanceBtn', function(e) {
+        e.preventDefault();
+        
+        let $btn = $(this);
+        let originalHtml = $btn.html();
+        
+        // Disable button and show spinner
+        $btn.prop('disabled', true);
+        $btn.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Exporting...');
+        
+        // Build export URL with current filters
+        let params = $('#globalFiltersForm').serialize();
+        let exportUrl = '{{ route("lms.performance.report.export") }}?' + params;
+        
+        // Trigger download
+        window.location.href = exportUrl;
+        
+        // Re-enable button after a few seconds (since download happens via browser)
+        setTimeout(function() {
+            $btn.prop('disabled', false);
+            $btn.html(originalHtml);
+        }, 3000);
     });
 
     // Handle Pagination Clicks inside the dynamic content
