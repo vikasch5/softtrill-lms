@@ -58,7 +58,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/feedbacks/sub-feedbacks/{feedbackId}', [App\Http\Controllers\Lms\FeedbackController::class, 'subFeedbacks'])->name('lms.feedbacks.sub-feedbacks');
 
     Route::get('/performance-report', [ReportController::class, 'report'])->name('lms.performance.report');
+    Route::get('/performance-report/export', [ReportController::class, 'export'])->name('lms.performance.report.export');
     Route::get('/agent-performance/{id?}', [ReportController::class, 'agentPerformance'])->name('lms.agent.performance');
+    Route::get('/agent-performance/{id}/export', [ReportController::class, 'exportAgentPerformance'])->name('lms.agent.performance.export');
 
     Route::get('/dashboard-widget-list', [DashboardController::class, 'widgetsList'])->name('lms.dashboard.widgets.list');
     Route::get('/dashboard-widget', [DashboardController::class, 'dashboardWidget'])->name('lms.dashboard.widgets');
@@ -84,6 +86,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/settings/privacy', [SettingsController::class, 'privacyIndex'])->name('lms.settings.privacy');
     Route::post('/settings/privacy', [SettingsController::class, 'privacyUpdate'])->name('lms.settings.privacy.update');
     Route::post('/settings/privacy/preview', [SettingsController::class, 'privacyPreview'])->name('lms.settings.privacy.preview');
+    // Notifications
+    Route::get('/notifications/fetch', [App\Http\Controllers\Lms\NotificationController::class, 'fetch'])->name('lms.notifications.fetch');
+    Route::post('/notifications/read-all', [App\Http\Controllers\Lms\NotificationController::class, 'markAllAsRead'])->name('lms.notifications.read-all');
+    Route::post('/notifications/{id}/read', [App\Http\Controllers\Lms\NotificationController::class, 'markAsRead'])->name('lms.notifications.read');
+    Route::post('/notifications/push/subscribe', [App\Http\Controllers\Lms\NotificationController::class, 'subscribePush'])->name('lms.notifications.push.subscribe');
+    Route::post('/notifications/push/unsubscribe', [App\Http\Controllers\Lms\NotificationController::class, 'unsubscribePush'])->name('lms.notifications.push.unsubscribe');
+    Route::post('/notifications/preferences', [App\Http\Controllers\Lms\NotificationController::class, 'updatePreferences'])->name('lms.notifications.preferences');
+
 });
 
 /*

@@ -88,7 +88,7 @@ class AppServiceProvider extends ServiceProvider
         View::composer('lms.common.header', function ($view) {
             $stats = [
                 'today' => 0,
-                'pending' => 0,
+                'missed' => 0,
                 'upcoming' => 0,
             ];
 
@@ -143,12 +143,15 @@ class AppServiceProvider extends ServiceProvider
                 });
             }
 
+            $now = Carbon::now();
+
             $stats['today'] = (clone $followupQuery)
                 ->whereDate('next_followup_at', $today)
+                ->where('next_followup_at', '>=', $now)
                 ->count();
 
-            $stats['pending'] = (clone $followupQuery)
-                ->where('next_followup_at', '<', $today->copy()->startOfDay())
+            $stats['missed'] = (clone $followupQuery)
+                ->where('next_followup_at', '<', $now)
                 ->count();
 
             $stats['upcoming'] = (clone $followupQuery)

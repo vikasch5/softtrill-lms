@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\AgentPerformanceExport;
 
 class ReportController extends Controller
 {
@@ -119,13 +121,12 @@ class ReportController extends Controller
         return $result;
     }
 
-    public function report(Request $request)
+    private function getFilteredQueries(Request $request)
     {
         $currentUser = Auth::user();
-        [$datePreset, $dateFrom, $dateTo, $dateFromTime, $dateToTime] = $this->resolveDateRange($request);
 
-        // Core Eloquent query for paginated view only
-        $query = User::with('details.teamleader', 'details.manager')
+        // Core Eloquent query
+        $query = User::with('details.teamleader', 'details.manager', 'details.cluster')
             ->whereDoesntHave('roles', function($q) {
                 $q->whereIn('name', ['Admin', 'admin', 'Cluster', 'cluster', 'Manager', 'manager']);
             });
@@ -178,6 +179,14 @@ class ReportController extends Controller
             $query->whereHas('details', function ($sq) use ($request) { $sq->where('cluster_id', $request->cluster_id); });
             $employeeIdsQuery->where('cluster_id', $request->cluster_id);
         }
+
+        return [$query, $employeeIdsQuery];
+    }
+
+    public function report(Request $request)
+    {
+        [$datePreset, $dateFrom, $dateTo, $dateFromTime, $dateToTime] = $this->resolveDateRange($request);
+        [$query, $employeeIdsQuery] = $this->getFilteredQueries($request);
         
         $users = $query->paginate(10)->appends($request->query());
         
@@ -256,9 +265,108 @@ class ReportController extends Controller
         return view('lms.pages.performance-report', compact('users', 'dateFrom', 'dateTo', 'datePreset', 'aggregate'));
     }
 
-    public function agentPerformance(Request $request, $id = null)
+    private function formatSeconds($seconds)
     {
-        $userId = $id ?? Auth::id();
+        if (!is_numeric($seconds) || $seconds <= 0) return '0h 00m';
+        return floor((int)$seconds / 3600) . 'h ' . gmdate('i\m', (int)$seconds);
+    }
+    
+    private function formatPercentage($decimal)
+    {
+        return number_format($decimal, 2) . '%';
+    }
+
+    public function export(Request $request)
+    {
+        [$datePreset, $dateFrom, $dateTo, $dateFromTime, $dateToTime] = $this->resolveDateRange($request);
+        [$query, $employeeIdsQuery] = $this->getFilteredQueries($request);
+
+        // Fetch all matching users without pagination for export
+        $users = $query->get(['users.id', 'users.name']);
+        
+        $exportData = collect();
+        $aggregate = [
+            'total_agents' => count($users),
+            'total_calls' => 0,
+            'answered_calls' => 0,
+            'talk_sec' => 0,
+            'answer_rate' => 0,
+            'avg_duration' => 0,
+        ];
+
+        try {
+            $dialerDb = DB::connection('dialer');
+            $allEmployeeIds = $employeeIdsQuery->pluck('employee_id')->filter()->unique()->toArray();
+            
+            $bulkMetrics = [];
+            if (!empty($allEmployeeIds)) {
+                $bulkMetrics = $this->getBulkAgentMetrics($dialerDb, $allEmployeeIds, $dateFromTime, $dateToTime);
+                
+                foreach ($bulkMetrics as $m) {
+                    $aggregate['total_calls'] += $m['total_calls'];
+                    $aggregate['answered_calls'] += $m['answered_calls'];
+                    $aggregate['talk_sec'] += $m['talk_sec'];
+                }
+                
+                if ($aggregate['total_calls'] > 0) {
+                    $aggregate['answer_rate'] = ($aggregate['answered_calls'] / $aggregate['total_calls']) * 100;
+                }
+                if ($aggregate['answered_calls'] > 0) {
+                    $aggregate['avg_duration'] = $aggregate['talk_sec'] / $aggregate['answered_calls'];
+                }
+            }
+            
+            foreach ($users as $user) {
+                $empId = $user->details->employee_id ?? null;
+                if ($empId && isset($bulkMetrics[$empId])) {
+                    $m = $bulkMetrics[$empId];
+                } else {
+                    $m = [
+                        'total_calls' => 0, 'answered_calls' => 0, 'calls_gt_2min' => 0,
+                        'pause_sec' => 0, 'wait_sec' => 0, 'talk_sec' => 0,
+                        'dispo_sec' => 0, 'dead_sec' => 0, 'login_sec' => 0,
+                        'answer_rate' => 0, 'avg_duration' => 0, 'calls_per_hour' => 0,
+                    ];
+                }
+                
+                $exportData->push([
+                    'Agent Name' => $user->name,
+                    'Employee ID' => $empId ?? 'N/A',
+                    'Cluster' => optional(optional($user->details)->cluster)->name ?? 'N/A',
+                    'Manager' => optional(optional($user->details)->manager)->name ?? 'N/A',
+                    'Team Leader' => optional(optional($user->details)->teamleader)->name ?? 'N/A',
+                    'Total Calls' => $m['total_calls'],
+                    'Answered' => $m['answered_calls'],
+                    'Answer Rate' => $this->formatPercentage($m['answer_rate']),
+                    'Avg. Duration' => $m['avg_duration'] > 0 ? gmdate('i:s', (int)$m['avg_duration']) : '00:00',
+                    'Login Hours' => $this->formatSeconds($m['login_sec']),
+                    'Pause' => $this->formatSeconds($m['pause_sec']),
+                    'Talk Time' => $this->formatSeconds($m['talk_sec']),
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Log::error("Dialer DB Error in ReportController@export: " . $e->getMessage() . "\nTrace: " . $e->getTraceAsString());
+            return redirect()->back()->with('error', 'Unable to generate export due to a database error. Please try again later.');
+        }
+
+        $dateString = Carbon::parse($dateFrom)->format('d M Y');
+        if ($dateFrom !== $dateTo) {
+            $dateString .= ' - ' . Carbon::parse($dateTo)->format('d M Y');
+        }
+
+        $filename = 'agent-performance-';
+        if ($dateFrom === $dateTo) {
+            $filename .= $dateFrom;
+        } else {
+            $filename .= "{$dateFrom}-to-{$dateTo}";
+        }
+        $filename .= '.xlsx';
+
+        return Excel::download(new AgentPerformanceExport($exportData, $dateString, $aggregate), $filename);
+    }
+
+    private function getAgentPerformanceData(Request $request, $userId, $isExport = false)
+    {
         $user = User::with('details.teamleader', 'details.manager', 'details.cluster')->findOrFail($userId);
         $currentUser = Auth::user();
 
@@ -291,7 +399,7 @@ class ReportController extends Controller
         ];
         
         $dailyPerformance = [];
-        $callHistory = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15);
+        $callHistory = $isExport ? collect() : new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15);
         $callingActivity = collect();
         
         try {
@@ -386,22 +494,31 @@ class ReportController extends Controller
                     }
                 }
 
-                // Apply Sorting
                 $sortOrder = strtolower($request->input('call_sort', 'desc')) === 'asc' ? 'asc' : 'desc';
                 $callHistoryQuery->orderBy('val.event_time', $sortOrder);
 
-                $callHistory = $callHistoryQuery->paginate(15)->appends($request->query());
+                if ($isExport) {
+                    $callHistory = $callHistoryQuery->get();
+                } else {
+                    $callHistory = $callHistoryQuery->paginate(15)->appends($request->query());
+                }
                 
-                // Lazy-load Recordings and Answered Status ONLY for the 15 paginated items
-                if ($callHistory->count() > 0) {
-                    $paginatedLeadIds = collect($callHistory->items())->pluck('lead_id')->unique()->toArray();
+                // Lazy-load Recordings and Answered Status
+                $hasItems = $isExport ? $callHistory->count() > 0 : $callHistory->count() > 0;
+                if ($hasItems) {
+                    $paginatedLeadIds = $isExport ? $callHistory->pluck('lead_id')->unique()->toArray() : collect($callHistory->items())->pluck('lead_id')->unique()->toArray();
                     
-                    $recordingsMap = $dialerDb->table('recording_log')
-                        ->select('lead_id', DB::raw('MAX(filename) as filename'))
-                        ->whereIn('lead_id', $paginatedLeadIds)
-                        ->groupBy('lead_id')
-                        ->get()
-                        ->keyBy('lead_id');
+                    $recordingsMap = collect();
+                    try {
+                        $recordingsMap = $dialerDb->table('recording_log')
+                            ->select('lead_id', DB::raw('MAX(filename) as filename'))
+                            ->whereIn('lead_id', $paginatedLeadIds)
+                            ->groupBy('lead_id')
+                            ->get()
+                            ->keyBy('lead_id');
+                    } catch (\Exception $e) {
+                        \Log::warning("Could not fetch recordings: " . $e->getMessage());
+                    }
                         
                     $answeredMap = $dialerDb->table('vicidial_carrier_log')
                         ->whereIn('lead_id', $paginatedLeadIds)
@@ -416,12 +533,18 @@ class ReportController extends Controller
                         ->get()
                         ->keyBy('lead_id');
                         
-                    $callHistory->getCollection()->transform(function($item) use ($recordingsMap, $answeredMap, $listIdMap) {
+                    $transformFn = function($item) use ($recordingsMap, $answeredMap, $listIdMap) {
                         $item->recording_filename = $recordingsMap->has($item->lead_id) ? $recordingsMap->get($item->lead_id)->filename : null;
                         $item->is_answered = $answeredMap->has($item->lead_id) ? 1 : 0;
                         $item->list_id = $listIdMap->has($item->lead_id) ? $listIdMap->get($item->lead_id)->vendor_lead_code : $item->lead_id;
                         return $item;
-                    });
+                    };
+                    
+                    if ($isExport) {
+                        $callHistory->transform($transformFn);
+                    } else {
+                        $callHistory->getCollection()->transform($transformFn);
+                    }
                 }
                     
                 // Get Calling Activity (Calls per hour)
@@ -448,11 +571,40 @@ class ReportController extends Controller
         $user->calls_per_hour = $metrics['calls_per_hour'];
         $user->calls_gt_2min = $metrics['calls_gt_2min'];
 
+        return [$user, $dateFrom, $dateTo, $datePreset, $dailyPerformance, $callHistory, $callingActivity];
+    }
+
+    public function agentPerformance(Request $request, $id = null)
+    {
+        $userId = $id ?? Auth::id();
+        [$user, $dateFrom, $dateTo, $datePreset, $dailyPerformance, $callHistory, $callingActivity] = $this->getAgentPerformanceData($request, $userId, false);
+
         if ($request->ajax()) {
             return view('lms.pages.partials.agent-performance-content', compact('user', 'dailyPerformance', 'callHistory', 'callingActivity'))->render();
         }
 
         return view('lms.pages.agent-performance', compact('user', 'dateFrom', 'dateTo', 'datePreset', 'dailyPerformance', 'callHistory', 'callingActivity'));
+    }
+
+    public function exportAgentPerformance(Request $request, $id)
+    {
+        $userId = $id;
+        [$user, $dateFrom, $dateTo, $datePreset, $dailyPerformance, $callHistory, $callingActivity] = $this->getAgentPerformanceData($request, $userId, true);
+
+        $dateString = Carbon::parse($dateFrom)->format('d M Y');
+        if ($dateFrom !== $dateTo) {
+            $dateString .= ' - ' . Carbon::parse($dateTo)->format('d M Y');
+        }
+
+        $filename = 'agent-performance-' . str_replace(' ', '-', strtolower($user->name)) . '-';
+        if ($dateFrom === $dateTo) {
+            $filename .= $dateFrom;
+        } else {
+            $filename .= "{$dateFrom}-to-{$dateTo}";
+        }
+        $filename .= '.xlsx';
+
+        return Excel::download(new \App\Exports\SingleAgentExport($user->name, $dailyPerformance, $callHistory, $dateString), $filename);
     }
 
     /**

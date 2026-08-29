@@ -44,7 +44,7 @@
                     aria-controls="performanceFiltersCollapse">
                     <iconify-icon icon="lucide:filter" class="text-xl"></iconify-icon> Filter
                 </button>
-                <button class="btn btn-primary d-flex align-items-center gap-2">
+                <button id="exportAgentBtn" class="btn btn-primary d-flex align-items-center gap-2">
                     <iconify-icon icon="file-icons:microsoft-excel" class="text-xl"></iconify-icon> Export
                 </button>
             </div>
@@ -465,6 +465,34 @@
     $(document).on('click', '#agentPerformanceContent .pagination a', function(e) {
         e.preventDefault();
         fetchAjaxContent($(this).attr('href'));
+    });
+    
+    // Handle Export Button
+    $(document).on('click', '#exportAgentBtn', function(e) {
+        e.preventDefault();
+        
+        let $btn = $(this);
+        let originalHtml = $btn.html();
+        
+        // Disable button and show spinner
+        $btn.prop('disabled', true);
+        $btn.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Exporting...');
+        
+        // Build export URL with current filters from both forms
+        const globalData = $('#globalFiltersForm').serializeArray();
+        const historyData = $('#callHistoryFilterForm').serializeArray();
+        const mergedData = $.param(globalData.concat(historyData));
+        
+        let exportUrl = '{{ route("lms.agent.performance.export", $user->id) }}?' + mergedData;
+        
+        // Trigger download
+        window.location.href = exportUrl;
+        
+        // Re-enable button after a few seconds
+        setTimeout(function() {
+            $btn.prop('disabled', false);
+            $btn.html(originalHtml);
+        }, 3000);
     });
 
 </script>

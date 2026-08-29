@@ -33,13 +33,13 @@
                         </div>
                     </div>
                 </a>
-                <a href="{{ route('lms.leads', ['followup_status' => 'pending']) }}"
+                <a href="{{ route('lms.leads', ['followup_status' => 'missed']) }}"
                     style="text-decoration: none; color: inherit;">
-                    <div class="header-followup-card pending">
+                    <div class="header-followup-card missed">
                         <div class="header-followup-content">
-                            <div class="header-followup-label">Pending Followups <span
+                            <div class="header-followup-label">Missed Followups <span
                                     class="header-followup-separator">:</span></div>
-                            <div class="header-followup-value">{{ $headerFollowupStats['pending'] ?? 0 }}</div>
+                            <div class="header-followup-value">{{ $headerFollowupStats['missed'] ?? 0 }}</div>
                         </div>
                     </div>
                 </a>
@@ -89,31 +89,11 @@
                                 <h6 class="text-lg text-primary-light fw-semibold mb-0">Notifications</h6>
                             </div>
                             <span
-                                class="text-primary-600 fw-semibold text-lg w-40-px h-40-px rounded-circle bg-base d-flex justify-content-center align-items-center">0</span>
+                                class="text-primary-600 fw-semibold text-lg w-40-px h-40-px rounded-circle bg-base d-flex justify-content-center align-items-center notification-count-badge" style="display: none;">0</span>
                         </div>
 
-                        <div class="max-h-400-px overflow-y-auto scroll-sm pe-4">
-                            {{-- <a href="javascript:void(0)"
-                                class="px-24 py-12 d-flex align-items-start gap-3 mb-2 justify-content-between">
-                                <div
-                                    class="text-black hover-bg-transparent hover-text-primary d-flex align-items-center gap-3">
-                                    <span
-                                        class="w-44-px h-44-px bg-success-subtle text-success-main rounded-circle d-flex justify-content-center align-items-center flex-shrink-0">
-                                        <iconify-icon icon="bitcoin-icons:verify-outline"
-                                            class="icon text-xxl"></iconify-icon>
-                                    </span>
-                                    <div>
-                                        <h6 class="text-md fw-semibold mb-4">Congratulations</h6>
-                                        <p class="mb-0 text-sm text-secondary-light text-w-200-px">Your profile has been
-                                            Verified. Your
-                                            profile has been Verified</p>
-                                    </div>
-                                </div>
-                                <span class="text-sm text-secondary-light flex-shrink-0">23 Mins ago</span>
-                            </a> --}}
-                            <span
-                                class="text-sm text-secondary-light flex-shrink-0 px-24 py-12 d-flex align-items-start gap-3 mb-2 justify-content-between">No
-                                notifications found</span>
+                        <div class="max-h-400-px overflow-y-auto scroll-sm pe-4" id="notification-list-container">
+                            <span class="text-sm text-secondary-light flex-shrink-0 px-24 py-12 d-flex align-items-start gap-3 mb-2 justify-content-between">Loading...</span>
                         </div>
 
                         {{-- <div class="text-center py-12 px-16">
@@ -143,6 +123,11 @@
                             </button>
                         </div>
                         <ul class="to-top-list">
+                            <li>
+                                <a class="dropdown-item text-black px-0 py-8 hover-bg-transparent hover-text-primary d-flex align-items-center gap-3"
+                                    href="#" data-bs-toggle="modal" data-bs-target="#notificationSettingsModal">
+                                    <iconify-icon icon="iconoir:bell" class="icon text-xl"></iconify-icon> Notification Settings</a>
+                            </li>
                             {{-- <li>
                                 <a class="dropdown-item text-black px-0 py-8 hover-bg-transparent hover-text-primary d-flex align-items-center gap-3"
                                     href="view-profile.html">
@@ -169,6 +154,211 @@
                         </ul>
                     </div>
                 </div><!-- Profile dropdown end -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Notification Settings Modal -->
+<style>
+    #notificationSettingsModal .modal-content {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    #notificationSettingsModal .modal-header {
+        border-bottom: 1px solid #eaeaea;
+        padding: 20px 24px;
+    }
+    #notificationSettingsModal .modal-title {
+        font-weight: 600;
+        font-size: 1.25rem;
+        color: #333;
+        margin: 0;
+    }
+    #notificationSettingsModal .modal-body {
+        padding: 24px;
+    }
+    #notificationSettingsModal .push-card {
+        background-color: #f8f9fa;
+        border: 1px solid #eef0f2;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    #notificationSettingsModal .push-card h6 {
+        margin: 0 0 4px 0;
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #2c3e50;
+    }
+    #notificationSettingsModal .push-card small {
+        color: #6c757d;
+        font-size: 0.8rem;
+    }
+    #notificationSettingsModal .section-title {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 16px;
+        font-size: 1rem;
+    }
+    #notificationSettingsModal .pref-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    #notificationSettingsModal .pref-row:last-child {
+        margin-bottom: 0;
+    }
+    #notificationSettingsModal .pref-row label {
+        color: #495057;
+        font-weight: 500;
+        font-size: 0.95rem;
+        margin: 0;
+        cursor: pointer;
+    }
+    #notificationSettingsModal .form-switch {
+        padding-left: 0;
+        margin: 0;
+    }
+    /* Strictly force the toggle size */
+    #notificationSettingsModal .form-check-input {
+        width: 40px !important;
+        height: 20px !important;
+        margin-top: 0 !important;
+        cursor: pointer;
+    }
+    #notificationSettingsModal .modal-footer {
+        border-top: 1px solid #eaeaea;
+        padding: 16px 24px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+    #notificationSettingsModal .btn-cancel {
+        background-color: #f1f3f5;
+        color: #495057;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: 500;
+    }
+    #notificationSettingsModal .btn-save {
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: 500;
+    }
+
+    /* Responsive styling for small screens */
+    @media (max-width: 576px) {
+        #notificationSettingsModal .modal-header {
+            padding: 16px;
+        }
+        #notificationSettingsModal .modal-title {
+            font-size: 1.1rem;
+        }
+        #notificationSettingsModal .modal-body {
+            padding: 16px;
+        }
+        #notificationSettingsModal .push-card {
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+        #notificationSettingsModal .push-card h6 {
+            font-size: 0.9rem;
+        }
+        #notificationSettingsModal .push-card small {
+            font-size: 0.75rem;
+        }
+        #notificationSettingsModal .section-title {
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+        }
+        #notificationSettingsModal .pref-row {
+            margin-bottom: 12px;
+        }
+        #notificationSettingsModal .pref-row label {
+            font-size: 0.85rem;
+        }
+        #notificationSettingsModal .form-check-input {
+            width: 36px !important;
+            height: 18px !important;
+        }
+        #notificationSettingsModal .modal-footer {
+            padding: 12px 16px;
+            gap: 8px;
+        }
+        #notificationSettingsModal .btn-cancel,
+        #notificationSettingsModal .btn-save {
+            padding: 6px 12px;
+            font-size: 0.85rem;
+        }
+    }
+</style>
+<div class="modal fade" id="notificationSettingsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 460px;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Notification Settings</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                
+                <div class="push-card">
+                    <div>
+                        <h6>Browser Push Notifications</h6>
+                        <small>Receive alerts when outside the app.</small>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="pref_browser_notifications" {{ env('VAPID_PUBLIC_KEY') ? '' : 'disabled' }}>
+                    </div>
+                </div>
+                
+                <h6 class="section-title">In-App Notifications</h6>
+                <div class="pref-list">
+                    <div class="pref-row">
+                        <label for="pref_followup_due">Follow-up Due</label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input pref-toggle" type="checkbox" id="pref_followup_due" data-key="followup_due" {{ (auth()->user()->notification_preferences['followup_due'] ?? true) ? 'checked' : '' }}>
+                        </div>
+                    </div>
+                    
+                    <div class="pref-row">
+                        <label for="pref_upcoming_followup">Upcoming Follow-up</label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input pref-toggle" type="checkbox" id="pref_upcoming_followup" data-key="upcoming_followup" {{ (auth()->user()->notification_preferences['upcoming_followup'] ?? true) ? 'checked' : '' }}>
+                        </div>
+                    </div>
+
+                    <div class="pref-row">
+                        <label for="pref_overdue_followup">Overdue Follow-up</label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input pref-toggle" type="checkbox" id="pref_overdue_followup" data-key="overdue_followup" {{ (auth()->user()->notification_preferences['overdue_followup'] ?? true) ? 'checked' : '' }}>
+                        </div>
+                    </div>
+
+                    <div class="pref-row">
+                        <label for="pref_lead_assigned">New Lead Assigned</label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input pref-toggle" type="checkbox" id="pref_lead_assigned" data-key="lead_assigned" {{ (auth()->user()->notification_preferences['lead_assigned'] ?? true) ? 'checked' : '' }}>
+                        </div>
+                    </div>
+
+                    <div class="pref-row">
+                        <label for="pref_lead_reassigned">Lead Reassigned</label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input pref-toggle" type="checkbox" id="pref_lead_reassigned" data-key="lead_reassigned" {{ (auth()->user()->notification_preferences['lead_reassigned'] ?? true) ? 'checked' : '' }}>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-save" id="save-notification-prefs-btn">Save Preferences</button>
             </div>
         </div>
     </div>
@@ -248,3 +438,8 @@
   </div>
 </div>
 @endif
+
+<script>
+    window.NotificationSystem = window.NotificationSystem || {};
+    window.NotificationSystem.vapidPublicKey = "{{ config('services.webpush.vapid_public_key') }}";
+</script>

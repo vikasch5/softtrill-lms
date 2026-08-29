@@ -66,6 +66,7 @@
 {{-- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> --}}
    <script src="{{ asset('vendor/flasher/sweetalert2.min.js')}}"></script>
    <script src="{{ asset('vendor/flasher/flasher-sweetalert.min.js')}}"></script>
+<script src="{{ asset('js/notifications.js') }}"></script>
    @yield('scripts')
    <script>
        function sendKeepAlive() {

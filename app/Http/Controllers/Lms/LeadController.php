@@ -80,10 +80,12 @@ class LeadController extends Controller
 
         if ($request->filled('followup_status')) {
             $today = \Carbon\Carbon::today();
+            $now = \Carbon\Carbon::now();
             if ($request->followup_status === 'today') {
-                $query->whereDate('next_followup_at', $today);
-            } elseif ($request->followup_status === 'pending') {
-                $query->where('next_followup_at', '<', $today->copy()->startOfDay());
+                $query->whereDate('next_followup_at', $today)
+                      ->where('next_followup_at', '>=', $now);
+            } elseif ($request->followup_status === 'missed') {
+                $query->where('next_followup_at', '<', $now);
             } elseif ($request->followup_status === 'upcoming') {
                 $query->where('next_followup_at', '>', $today->copy()->endOfDay());
             }
@@ -265,10 +267,12 @@ class LeadController extends Controller
 
         if ($request->filled('followup_status')) {
             $today = \Carbon\Carbon::today();
+            $now = \Carbon\Carbon::now();
             if ($request->followup_status === 'today') {
-                $query->whereDate('next_followup_at', $today);
-            } elseif ($request->followup_status === 'pending') {
-                $query->where('next_followup_at', '<', $today->copy()->startOfDay());
+                $query->whereDate('next_followup_at', $today)
+                      ->where('next_followup_at', '>=', $now);
+            } elseif ($request->followup_status === 'missed') {
+                $query->where('next_followup_at', '<', $now);
             } elseif ($request->followup_status === 'upcoming') {
                 $query->where('next_followup_at', '>', $today->copy()->endOfDay());
             }
@@ -1138,14 +1142,32 @@ class LeadController extends Controller
                 ], 403);
             }
 
+            $leadsToAssign = Lead::whereIn('id', $leadIds)->get();
+
             Lead::whereIn('id', $leadIds)->update([
                 'assigned_to' => $assignedUser->id,
             ]);
 
-            foreach ($leadIds as $leadId) {
+            $assignedCount = 0;
+            $reassignedCount = 0;
+            $singleLead = null;
+            $singleIsReassignment = false;
+
+            foreach ($leadsToAssign as $lead) {
+                $isReassignment = !empty($lead->assigned_to) && $lead->assigned_to != $assignedUser->id;
+
+                if ($isReassignment) {
+                    $reassignedCount++;
+                } else {
+                    $assignedCount++;
+                }
+
+                $singleLead = $lead;
+                $singleIsReassignment = $isReassignment;
+
                 LeadActivityLog::create([
                     'tenant_id' => $tenantId ?? auth()->id(),
-                    'lead_id' => $leadId,
+                    'lead_id' => $lead->id,
                     'added_by' => auth()->id(),
                     'activity' => 'lead_assigned',
                     'old_value' => null,
@@ -1156,6 +1178,44 @@ class LeadController extends Controller
                         'user_name' => $assignedUser->name,
                     ]),
                 ]);
+            }
+
+            if (count($leadsToAssign) === 1 && $singleLead) {
+                // Single assignment
+                $singleLead->assigned_to = $assignedUser->id;
+                event(new \App\Events\LeadAssigned($singleLead, $assignedUser, $user, $singleIsReassignment));
+            } elseif (count($leadsToAssign) > 1) {
+                // Bulk assignment notifications
+                $notificationService = app(\App\Services\NotificationService::class);
+                $pushService = app(\App\Services\PushNotificationService::class);
+
+                if ($assignedCount > 0) {
+                    $payload = [
+                        'type' => 'lead_assigned',
+                        'title' => 'New Leads Assigned',
+                        'message' => "{$assignedCount} new leads have been assigned to you.",
+                        'target_url' => route('lms.leads'),
+                        'icon' => 'iconoir:user-plus',
+                        'priority' => 'normal',
+                    ];
+                    if ($notificationService->send($assignedUser, $payload)) {
+                        $pushService->dispatchToUser($assignedUser, $payload);
+                    }
+                }
+
+                if ($reassignedCount > 0) {
+                    $payload = [
+                        'type' => 'lead_reassigned',
+                        'title' => 'Leads Reassigned',
+                        'message' => "{$reassignedCount} leads have been reassigned to you.",
+                        'target_url' => route('lms.leads'),
+                        'icon' => 'iconoir:user-plus',
+                        'priority' => 'normal',
+                    ];
+                    if ($notificationService->send($assignedUser, $payload)) {
+                        $pushService->dispatchToUser($assignedUser, $payload);
+                    }
+                }
             }
 
             DB::commit();
@@ -1202,9 +1262,9 @@ class LeadController extends Controller
             ]);
 
             $leadUpdates = [];
-            if ($request->filled('next_followup_at')) {
-                $leadUpdates['next_followup_at'] = $request->next_followup_at;
-            }
+            
+            // Always set next_followup_at. If it's empty, it will be set to null.
+            $leadUpdates['next_followup_at'] = $request->filled('next_followup_at') ? $request->next_followup_at : null;
 
             // if ($request->source === 'dialer') {
             //     $leadUpdates['assigned_to'] = auth()->id();

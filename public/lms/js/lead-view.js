@@ -37,6 +37,9 @@ $(document).ready(function () {
     $('#lv-feedback').on('change', function () {
         let feedbackId = $(this).val();
 
+        // Clear followup date when feedback changes
+        $('#lv-followup').val('');
+
         $('#lv-sub-feedback').html('<option value="">Loading...</option>');
 
         if (!feedbackId) {

@@ -11,7 +11,11 @@
     <link rel="stylesheet" href="{{ asset('vendor/flasher/sweetalert2.min.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
     <link rel="stylesheet" href="{{ asset('lms/css/remixicon.css') }}">
-    <link rel="icon" type="image/png" href="{{ asset('lms/images/favicon.png') }}" sizes="16x16">
+    <link rel="icon" type="image/x-icon" href="{{ asset('lms/images/icons/favicon.ico') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('lms/images/icons/icon.svg') }}">
+    <link rel="apple-touch-icon" href="{{ asset('lms/images/icons/apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('lms/images/icons/favicon-192.png') }}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('lms/images/icons/favicon-512.png') }}">
     <!-- main css -->
     <link rel="stylesheet" href="{{ asset('lms/css/style.css') }}">
 

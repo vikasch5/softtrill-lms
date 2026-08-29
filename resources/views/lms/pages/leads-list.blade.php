@@ -148,7 +148,7 @@
                                         <select name="followup_status" class="form-select">
                                             <option value="">All Followups</option>
                                             <option value="today" {{ request('followup_status') === 'today' ? 'selected' : '' }}>Today</option>
-                                            <option value="pending" {{ request('followup_status') === 'pending' ? 'selected' : '' }}>Pending</option>
+                                            <option value="missed" {{ request('followup_status') === 'missed' ? 'selected' : '' }}>Missed</option>
                                             <option value="upcoming" {{ request('followup_status') === 'upcoming' ? 'selected' : '' }}>Upcoming</option>
                                         </select>
                                     </div>

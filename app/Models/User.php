@@ -45,10 +45,20 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'notification_preferences' => 'array',
         ];
     }
+
     public function details()
     {
         return $this->hasOne(UserDetails::class, 'user_id', 'id');
+    }
+
+    /**
+     * Get the push subscriptions for the user.
+     */
+    public function pushSubscriptions()
+    {
+        return $this->hasMany(PushSubscription::class);
     }
 }

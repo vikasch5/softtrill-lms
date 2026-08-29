@@ -2,7 +2,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LMS - Softtrill</title>
-    <link rel="icon" type="image/png" href="{{ asset('lms/images/favicon.png') }}" sizes="16x16">
+    <link rel="icon" type="image/x-icon" href="{{ asset('lms/images/icons/favicon.ico') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('lms/images/icons/icon.svg') }}">
+    <link rel="apple-touch-icon" href="{{ asset('lms/images/icons/apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('lms/images/icons/favicon-192.png') }}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('lms/images/icons/favicon-512.png') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <!-- remix icon font css  -->
     <link rel="stylesheet" href="{{ asset('lms/css/remixicon.css') }}">
