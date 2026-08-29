@@ -55,7 +55,7 @@ class TestPushNotification extends Command
             'title' => 'Test Notification!',
             'body' => 'This is a test web push notification from Laravel.',
             'url' => '/',
-            'icon' => '/favicon.ico'
+            'icon_url' => '/lms/images/icons/favicon-192.png'
         ]);
 
         foreach ($subscriptions as $sub) {

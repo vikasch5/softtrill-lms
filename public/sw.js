@@ -16,8 +16,8 @@ self.addEventListener('push', function (event) {
     const title = data.title || 'Notification';
     const options = {
         body: data.message || 'You have a new notification.',
-        icon: data.icon_url || '/lms/images/favicon.png', // Fallback icon
-        badge: '/lms/images/favicon.png',
+        icon: data.icon_url || '/lms/images/icons/favicon-192.png', // Fallback icon
+        badge: '/lms/images/icons/favicon-192.png',
         data: {
             url: data.target_url || '/'
         },

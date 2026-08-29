@@ -1262,9 +1262,9 @@ class LeadController extends Controller
             ]);
 
             $leadUpdates = [];
-            if ($request->filled('next_followup_at')) {
-                $leadUpdates['next_followup_at'] = $request->next_followup_at;
-            }
+            
+            // Always set next_followup_at. If it's empty, it will be set to null.
+            $leadUpdates['next_followup_at'] = $request->filled('next_followup_at') ? $request->next_followup_at : null;
 
             // if ($request->source === 'dialer') {
             //     $leadUpdates['assigned_to'] = auth()->id();
