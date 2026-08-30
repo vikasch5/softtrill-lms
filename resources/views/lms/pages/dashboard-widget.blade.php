@@ -136,6 +136,29 @@
 
                         </div>
 
+                        <div class="col-lg-4">
+
+                            <label class="form-label">
+                                Data Scope <i class="ri-information-line ms-1 text-muted" title="Global ignores list constraints and aggregates system-wide across all eligible data."></i>
+                            </label>
+
+                            <select
+                                class="form-control bg-primary-subtle"
+                                name="is_global"
+                                id="is_global">
+
+                                <option value="1" @selected(old('is_global', $widget->is_global ?? 1) == 1)>
+                                    Global (System-Wide Overview)
+                                </option>
+                                
+                                <option value="0" @selected(old('is_global', $widget->is_global ?? 1) == 0)>
+                                    List-Specific (Only Selected List)
+                                </option>
+
+                            </select>
+
+                        </div>
+
                         <!-- Chart -->
 
                         <div class="col-12 mt-3">

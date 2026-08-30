@@ -140,6 +140,7 @@ class DashboardController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'list_id' => 'required|exists:lead_lists,id',
+            'is_global' => 'nullable|boolean',
             'field_id' => 'nullable|exists:lead_fields,id',
             'chart_type' => 'required|in:card,bar,line,pie,doughnut,area',
             'aggregate' => 'required|in:count,sum,avg,min,max',
@@ -158,6 +159,7 @@ class DashboardController extends Controller
                 'tenant_id' => '0',
                 'title' => $request->title,
                 'list_id' => $request->list_id,
+                'is_global' => $request->has('is_global') ? $request->is_global : 1,
                 'field_id' => $request->field_id,
                 'chart_type' => $request->chart_type,
                 'aggregate' => $request->aggregate,

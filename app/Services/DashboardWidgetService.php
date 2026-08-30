@@ -34,7 +34,10 @@ class DashboardWidgetService
 
     protected function card($widget, $user = null, array $visibleUserIds = [])
     {
-        $query = DB::table('leads')->where('list_id', $widget->list_id);
+        $query = DB::table('leads');
+        if (! $widget->is_global) {
+            $query->where('list_id', $widget->list_id);
+        }
         $query = $this->applyHierarchyFilter($query, $user, $visibleUserIds);
 
         switch ($widget->aggregate) {
@@ -139,8 +142,11 @@ class DashboardWidgetService
 
     protected function groupedRows($widget, $user = null, array $visibleUserIds = [])
     {
-        $query     = DB::table('leads')->where('list_id', $widget->list_id);
-        $query     = $this->applyHierarchyFilter($query, $user, $visibleUserIds);
+        $query = DB::table('leads');
+        if (! $widget->is_global) {
+            $query->where('list_id', $widget->list_id);
+        }
+        $query = $this->applyHierarchyFilter($query, $user, $visibleUserIds);
         $aggExpr   = $this->aggregateExpression($widget);
 
         // Group by status (categorical dimension), apply aggregate on the value field
@@ -154,8 +160,11 @@ class DashboardWidgetService
 
     protected function timeSeriesRows($widget, ?string $groupBy = null, $user = null, array $visibleUserIds = [])
     {
-        $query   = DB::table('leads')->where('list_id', $widget->list_id);
-        $query   = $this->applyHierarchyFilter($query, $user, $visibleUserIds);
+        $query = DB::table('leads');
+        if (! $widget->is_global) {
+            $query->where('list_id', $widget->list_id);
+        }
+        $query = $this->applyHierarchyFilter($query, $user, $visibleUserIds);
         $groupBy = $groupBy ?? $widget->group_by ?? 'month';
         $aggExpr = $this->aggregateExpression($widget);
         $groups  = [

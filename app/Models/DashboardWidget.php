@@ -11,6 +11,7 @@ class DashboardWidget extends Model
         'added_by',
         'tenant_id',
         'list_id',
+        'is_global',
         'title',
         'field_id',
         'chart_type',
