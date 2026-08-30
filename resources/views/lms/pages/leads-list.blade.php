@@ -9,8 +9,11 @@
             <div class="card-header d-flex justify-content-between align-items-center">
 
                 <div>
-                    <h5 class="mb-1">
-                        Leads
+                    <h5 class="mb-1 d-flex align-items-center gap-3">
+                        Leads 
+                        <span class="badge bg-primary text-white shadow-sm rounded-pill px-3 py-2" style="font-size: 0.9rem;">
+                            <i class="ri-database-2-line me-1"></i> {{ number_format($totalLeads) }} Total
+                        </span>
                     </h5>
 
                     <small class="text-muted">
@@ -20,13 +23,13 @@
 
                 <div class="d-flex gap-2 flex-wrap">
 
-                    @role('Admin|Manager|Cluster|TeamLeader')
+                    @can('leads.assign')
                         <button type="button" class="btn btn-outline-dark" id="openAssignLeadModal">
                             <i class="ri-user-settings-line"></i>
                             Assign Lead
                         </button>
-                    @endrole
-                    @role('Admin|Cluster')
+                    @endcan
+                    @can('leads.download')
                         <button type="button" 
                             class="btn btn-outline-success"
                             id="openDownloadModalBtn"
@@ -34,23 +37,23 @@
                             <i class="ri-download-2-line"></i>
                             Download List
                         </button>
-                    @endrole
+                    @endcan
 
-                    @role('Admin|Manager|Cluster')
+                    @can('leads.import')
                     <a href="{{ route('lms.lead.import') }}" class="btn btn-primary">
 
                         <i class="ri-upload-cloud-line"></i>
                         Import Leads
 
                     </a>
-                    @endrole
+                    @endcan
 
-                    @role('Admin|Manager|Cluster|TeamLeader|Agent')
+                    @can('leads.create')
                     <a href="{{ route('lms.leads.add') }}" class="btn btn-primary">
                         <i class="ri-upload-cloud-line"></i>
                         Add Leads
                     </a>
-                    @endrole
+                    @endcan
                 </div>
 
             </div>
@@ -265,7 +268,9 @@
                                 <th>Call</th>
                                 <th>Created</th>
                                 <th>Last Updated</th>
+                                @canany(['leads.view', 'leads.edit', 'leads.delete'])
                                 <th width="150">Action</th>
+                                @endcanany
                             </tr>
                         </thead>
 
@@ -361,29 +366,36 @@
 
                                     </td>
 
+                                    @canany(['leads.view', 'leads.edit', 'leads.delete'])
                                     <td>
 
                                         <div class="btn-group">
 
+                                            @can('leads.view')
                                             <a href="{{ route('lms.lead.view', $lead->lead_id) }}" class="btn btn-sm btn-info me-1">
                                                 <i class="ri-eye-line"></i>
                                             </a>
+                                            @endcan
 
+                                            @can('leads.edit')
                                             <a href="{{ route('lms.lead.edit', $lead->id) }}"
                                                 class="btn btn-sm btn-primary me-1">
                                                 <i class="ri-edit-line"></i>
                                             </a>
-                                            @role('Admin|Manager|Cluster')
+                                            @endcan
+
+                                            @can('leads.delete')
                                             <input type="hidden" id="deleteUrl" value="{{ route('lms.leads.delete') }}">
 
                                             <button class="btn btn-sm btn-danger deleteRecord" data-id="{{ $lead->id }}">
                                                 <i class="ri-delete-bin-line"></i>
                                             </button>
-                                            @endrole
+                                            @endcan
 
                                         </div>
 
                                     </td>
+                                    @endcanany
 
                                 </tr>
 
@@ -407,10 +419,11 @@
 
                 </div>
 
-                <div class="mt-3">
-
-                    {{ $leads->links() }}
-
+                <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-3">
+                   
+                    <div class="pagination-wrapper d-flex justify-content-end w-100">
+                        {{ $leads->withQueryString()->links('pagination::simple-bootstrap-5') }}
+                    </div>
                 </div>
 
             </div>
@@ -495,6 +508,22 @@
     </div>
 
     <style>
+        /* Allow window scrolling to trigger sticky header on desktop */
+        @media (min-width: 992px) {
+            .table-responsive {
+                overflow: visible !important;
+            }
+        }
+        
+        .table-responsive thead th {
+            position: sticky;
+            top: 60px; /* Fallback, dynamically set by JS */
+            background-color: #ffffff !important;
+            z-index: 10;
+            box-shadow: inset 0 -2px 0 #e9ecef;
+            background-clip: padding-box;
+        }
+
         .export-modal-header {
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
             border-bottom: none;
@@ -610,6 +639,15 @@
 @section('scripts')
     <script>
         $(function () {
+            // Dynamically set sticky header top position based on navbar height
+            function adjustStickyHeader() {
+                const navbarHeight = $('.navbar-header').outerHeight() || 0;
+                $('.table-responsive thead th').css('top', navbarHeight + 'px');
+            }
+            
+            adjustStickyHeader();
+            $(window).resize(adjustStickyHeader);
+
             const assignLeadModal = new bootstrap.Modal(document.getElementById('assignLeadModal'));
 
             $('#downloadLeadList').on('click', function (event) {

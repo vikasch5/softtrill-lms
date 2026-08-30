@@ -45,8 +45,8 @@ class TestPushNotification extends Command
         $auth = [
             'VAPID' => [
                 'subject' => env('APP_URL', 'mailto:admin@example.com'),
-                'publicKey' => config('services.webpush.vapid_public_key'),
-                'privateKey' => config('services.webpush.vapid_private_key'),
+                'publicKey' => config('services.webpush.vapid_public_key', env('VAPID_PUBLIC_KEY', '')),
+                'privateKey' => config('services.webpush.vapid_private_key', env('VAPID_PRIVATE_KEY', '')),
             ],
         ];
 

@@ -226,7 +226,7 @@ class AppServiceProvider extends ServiceProvider
             // Run Tamper Detection in production
             // It's recommended to skip this in local dev unless explicitly enabled
             if (!app()->environment('local') || env('ENABLE_TAMPER_DETECTION', false)) {
-                $detector = app(\App\Services\License\TamperDetector::class);
+                $detector = app(TamperDetector::class);
                 if (!$detector->checkIntegrity()) {
                     // Instantly crash if tampering is detected
                     throw new \App\Exceptions\License\LicenseTamperedException(

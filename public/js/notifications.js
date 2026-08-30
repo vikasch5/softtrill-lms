@@ -98,8 +98,10 @@ const NotificationSystem = {
                     $('.notification-count-badge').text(response.unread_count);
                     if(response.unread_count > 0) {
                         $('.notification-count-badge').show();
+                        $('.mark-all-read-container').show();
                     } else {
                         $('.notification-count-badge').hide();
+                        $('.mark-all-read-container').hide();
                     }
                 }
 
@@ -132,7 +134,7 @@ const NotificationSystem = {
                                         </span>
                                         <div>
                                             <h6 class="text-md fw-semibold mb-1">${notif.title}</h6>
-                                            <p class="mb-0 text-sm text-secondary-light text-w-200-px">${notif.message}</p>
+                                            <p class="mb-0 text-sm text-secondary-light">${notif.message}</p>
                                         </div>
                                     </div>
                                     <div class="d-flex flex-column align-items-end">
@@ -145,10 +147,6 @@ const NotificationSystem = {
                             `;
                         });
                         
-                        html += `
-                        <div class="text-center py-12 px-16">
-                            <a href="#" class="text-primary-600 fw-semibold text-md mark-all-read">Mark All as Read</a>
-                        </div>`;
                     }
                     
                     $('#notification-list-container').html(html);

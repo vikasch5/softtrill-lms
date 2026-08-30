@@ -252,10 +252,9 @@
                                     <thead>
                                         <tr>
                                             <th>Role</th>
-                                            <th class="text-center">View Data</th>
                                             <th class="text-center">View Unmasked Mobile</th>
                                             <th class="text-center">View Unmasked Email</th>
-                                            <th class="text-center">Export Data</th>
+                                            {{-- <th class="text-center">Export Data</th> --}}
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -263,11 +262,6 @@
                                         @foreach($roles as $role)
                                         <tr>
                                             <td>{{ $role->name }}</td>
-                                            <td class="text-center">
-                                                <div class="form-check d-flex justify-content-center">
-                                                    <input class="form-check-input" type="checkbox" name="privacy_roles_{{ $role->name }}_view_data" value="1" {{ ($settings['roles'][$role->name]['view_data'] ?? 1) ? 'checked' : '' }}>
-                                                </div>
-                                            </td>
                                             <td class="text-center">
                                                 <div class="form-check d-flex justify-content-center">
                                                     <input class="form-check-input" type="checkbox" name="privacy_roles_{{ $role->name }}_unmasked_mobile" value="1" {{ ($settings['roles'][$role->name]['unmasked_mobile'] ?? 0) ? 'checked' : '' }}>
@@ -278,11 +272,11 @@
                                                     <input class="form-check-input" type="checkbox" name="privacy_roles_{{ $role->name }}_unmasked_email" value="1" {{ ($settings['roles'][$role->name]['unmasked_email'] ?? 0) ? 'checked' : '' }}>
                                                 </div>
                                             </td>
-                                            <td class="text-center">
+                                            {{-- <td class="text-center">
                                                 <div class="form-check d-flex justify-content-center">
                                                     <input class="form-check-input" type="checkbox" name="privacy_roles_{{ $role->name }}_export" value="1" {{ ($settings['roles'][$role->name]['export'] ?? 0) ? 'checked' : '' }}>
                                                 </div>
-                                            </td>
+                                            </td> --}}
                                         </tr>
                                         @endforeach
                                     </tbody>

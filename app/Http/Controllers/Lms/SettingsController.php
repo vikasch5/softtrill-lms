@@ -82,7 +82,6 @@ class SettingsController extends Controller
         $roles = Role::all();
         foreach ($roles as $role) {
             $roleName = $role->name;
-            Setting::set("privacy.roles.{$roleName}.view_data", $request->input("privacy_roles_{$roleName}_view_data", 0));
             Setting::set("privacy.roles.{$roleName}.unmasked_mobile", $request->input("privacy_roles_{$roleName}_unmasked_mobile", 0));
             Setting::set("privacy.roles.{$roleName}.unmasked_email", $request->input("privacy_roles_{$roleName}_unmasked_email", 0));
             Setting::set("privacy.roles.{$roleName}.export", $request->input("privacy_roles_{$roleName}_export", 0));

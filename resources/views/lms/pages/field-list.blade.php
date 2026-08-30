@@ -12,9 +12,11 @@
                     <div class="card-header d-flex align-items-center justify-content-between">
                         <h5 class="card-title mb-0">Lead Fields</h5>
 
+                        @can('lead-fields.create')
                         <a href="{{ route('lms.lead-fields.add') }}" class="btn btn-primary">
                             + Add Field
                         </a>
+                        @endcan
                     </div>
 
                     <div class="card-body">
@@ -30,7 +32,9 @@
                                         <th>Total Fields</th>
                                         <th>Status</th>
                                         <th>Created On</th>
+                                        @canany(['lead-fields.edit', 'lead-fields.delete'])
                                         <th class="text-center">Action</th>
+                                        @endcanany
                                     </tr>
                                 </thead>
 
@@ -68,17 +72,23 @@
                                                 {{ \Carbon\Carbon::parse($list->created_at)->format('d M Y') }}
                                             </td>
 
+                                            @canany(['lead-fields.edit', 'lead-fields.delete'])
                                             <td class="text-center">
 
+                                                @can('lead-fields.edit')
                                                 <a href="{{ route('lms.lead-fields.add', $list->id) }}"
                                                     class="btn btn-sm btn-primary">
                                                     Manage Fields
                                                 </a>
+                                                @endcan
+                                                @can('lead-fields.delete')
                                                 <a href="" class="btn btn-sm btn-danger deleteItem">
                                                     <i class="ri-delete-bin-line"></i>
                                                 </a>
+                                                @endcan
 
                                             </td>
+                                            @endcanany
 
                                         </tr>
 

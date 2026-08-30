@@ -13,7 +13,9 @@
                         <h5 class="card-title mb-0">Users List</h5>
 
                         <div class="btns">
+                        @can('users.create')
                             <a href="{{ route('lms.users.add') }}" class="btn btn-primary">Add New User</a>
+                        @endcan
                         </div>
 
                     </div>
@@ -35,7 +37,9 @@
                                         <th>Role</th>
                                         <th>Reporting To</th>
                                         <th>Status</th>
-                                        <th class="text-center">Action</th>
+                                            @canany(['users.edit', 'users.delete'])
+                                            <th class="text-center">Action</th>
+                                            @endcanany
                                     </tr>
 
                                 </thead>
@@ -150,16 +154,20 @@ $role = $user->getRoleNames()->first();
 
 
                                             {{-- ACTION --}}
+                                            @canany(['users.edit', 'users.delete'])
                                             <td class="text-center">
 
+                                                @can('users.edit')
                                                 <a href="{{ route('lms.users.add', $user->id) }}"
                                                     class="w-32-px h-32-px bg-success-focus text-success-main rounded-circle d-inline-flex align-items-center justify-content-center">
 
                                                     <iconify-icon icon="lucide:edit"></iconify-icon>
 
                                                 </a>
+                                                @endcan
 
 
+                                                @can('users.delete')
                                                 <a href="javascript:void(0)"
                                                     class="deleteRecord w-32-px h-32-px bg-danger-focus text-danger-main rounded-circle d-inline-flex align-items-center justify-content-center"
                                                     data-id="{{ $user->id }}">
@@ -167,8 +175,10 @@ $role = $user->getRoleNames()->first();
                                                     <iconify-icon icon="mingcute:delete-2-line"></iconify-icon>
 
                                                 </a>
+                                                @endcan
 
                                             </td>
+                                            @endcanany
 
                                         </tr>
 
