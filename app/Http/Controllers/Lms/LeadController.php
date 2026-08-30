@@ -128,9 +128,11 @@ class LeadController extends Controller
         $filterService = app(\App\Services\LeadFilterService::class);
         $query = $filterService->applyDynamicFilters($query, $dynamicFilters, $filterableFields);
 
+        $totalLeads = $query->count();
+        
         $leads = $query
             ->latest('id')
-            ->simplePaginate(20)
+            ->cursorPaginate(20)
             ->withQueryString();
 
         $lists = LeadList::query()
@@ -148,7 +150,7 @@ class LeadController extends Controller
 
         return view(
             'lms.pages.leads-list',
-            compact('leads', 'lists', 'feedbacks', 'filterableFields', 'assignmentRoles', 'privacyService', 'privacySettings')
+            compact('leads', 'lists', 'feedbacks', 'filterableFields', 'assignmentRoles', 'privacyService', 'privacySettings', 'totalLeads')
         );
     }
 

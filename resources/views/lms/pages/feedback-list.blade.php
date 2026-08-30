@@ -12,9 +12,11 @@
                 <div class="card-header d-flex align-items-center justify-content-between">
                     <h5 class="card-title mb-0">Feedback Management</h5>
 
+                    @can('feedbacks.create')
                     <a href="{{ route('lms.feedbacks.add') }}" class="btn btn-primary">
                         + Add Feedback
                     </a>
+                    @endcan
                 </div>
 
                 <div class="card-body">
@@ -31,7 +33,9 @@
                                     <th>Parent Feedback</th>
                                     <th>Status</th>
                                     <th>Created</th>
+                                    @canany(['feedbacks.edit', 'feedbacks.delete'])
                                     <th class="text-center">Action</th>
+                                    @endcanany
                                 </tr>
                             </thead>
 
@@ -112,15 +116,19 @@
                                             {{ $feedback->created_at->format('d M Y') }}
                                         </td>
 
+                                        @canany(['feedbacks.edit', 'feedbacks.delete'])
                                         <td class="text-center">
 
+                                            @can('feedbacks.edit')
                                             <a href="{{ route('lms.feedbacks.add', $feedback->id) }}"
                                                 class="w-32-px h-32-px bg-success-focus text-success-main rounded-circle d-inline-flex align-items-center justify-content-center">
 
                                                 <iconify-icon icon="lucide:edit"></iconify-icon>
 
                                             </a>
+                                            @endcan
 
+                                            @can('feedbacks.delete')
                                             <a href="javascript:void(0)"
                                                 class="deleteRecord w-32-px h-32-px bg-danger-focus text-danger-main rounded-circle d-inline-flex align-items-center justify-content-center"
                                                 data-id="{{ $feedback->id }}">
@@ -128,8 +136,10 @@
                                                 <iconify-icon icon="mingcute:delete-2-line"></iconify-icon>
 
                                             </a>
+                                            @endcan
 
                                         </td>
+                                        @endcanany
 
                                     </tr>
 

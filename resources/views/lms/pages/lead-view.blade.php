@@ -39,8 +39,8 @@
                 <div class="lv-card">
                     <div class="lv-card-head">
                         <div>
-                            <div class="lv-lead-name">{{ $leadName }}</div>
-                            <div class="lv-lead-id">Lead #{{ $lead->id }} · Added {{ $createdOn }} · Updated {{ $updatedOn }}</div>
+                            <div class="lv-lead-name">Lead #{{ $lead->lead_id }}</div>
+                            <div class="lv-lead-id">Added {{ $createdOn }} <br> Updated {{ $updatedOn }}</div>
                         </div>
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                             <span class="lv-badge {{ $statusColor }}" id="lead-status-badge">

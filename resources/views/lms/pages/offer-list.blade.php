@@ -21,10 +21,11 @@
                             {{ isset($offers) ? $offers->total() : 0 }}
                             {{ isset($offers) && $offers->total() == 1 ? 'Offer' : 'Offers' }}
                         </span>
-                        
+                        @can('offers.create')
                         <a href="{{ route('lms.offer.add') }}" class="btn btn-primary btn-sm">
                             <i class="bi bi-plus-circle me-1"></i> Add Offer
                         </a>
+                        @endcan
                     </div>
 
                 </div>
@@ -41,7 +42,9 @@
                                     <th>Description</th>
                                     <th>URL</th>
                                     <th>Status</th>
+                                    @canany(['offers.edit', 'offers.delete'])
                                     <th class="text-center">Action</th>
+                                    @endcanany
                                 </tr>
                             </thead>
 
@@ -88,26 +91,32 @@
                                                 @endif
                                             </td>
 
+                                            @canany(['offers.edit', 'offers.delete'])
                                             <td class="text-center">
                                                 <div class="d-flex justify-content-center gap-2">
+                                                    @can('offers.edit')
                                                     <a href="{{ route('lms.offer.add', ['id' => $item->id]) }}" 
                                                         class="w-32-px h-32-px bg-success-focus text-success-main rounded-circle d-inline-flex align-items-center justify-content-center"
                                                         title="Edit">
                                                         <iconify-icon icon="lucide:edit"></iconify-icon>
                                                     </a>
+                                                    @endcan
 
+                                                    @can('offers.delete')
                                                     <a href="javascript:void(0)"
                                                         class="deleteRecord w-32-px h-32-px bg-danger-focus text-danger-main rounded-circle d-inline-flex align-items-center justify-content-center"
                                                         data-id="{{ $item->id }}" title="Delete">
                                                         <iconify-icon icon="mingcute:delete-2-line"></iconify-icon>
                                                     </a>
+                                                    @endcan
                                                 </div>
                                             </td>
+                                            @endcanany
                                         </tr>
                                     @endforeach
                                 @else
                                     <tr>
-                                        <td colspan="7" class="text-center text-muted py-4">No offers found.</td>
+                                        <td colspan="7" class="text-center py-4 text-muted">No Offers Found.</td>
                                     </tr>
                                 @endif
                             </tbody>
