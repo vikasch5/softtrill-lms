@@ -157,10 +157,10 @@
                 <div class="d-flex align-items-center gap-2">
                   <select id="bar-filter-{{ $widget->id }}" class="form-select form-select-sm w-auto bg-base border text-secondary-light radius-8">
                     @php
-                      $groupByMap = ['day' => 'Today', 'week' => 'Weekly', 'month' => 'Monthly', 'year' => 'Yearly'];
+                      $groupByMap = ['day' => 'Day', 'week' => 'Weekly', 'month' => 'Monthly', 'year' => 'Yearly'];
                       $activeLabel = $groupByMap[$widget->group_by] ?? 'Monthly';
                     @endphp
-                    <option @selected($activeLabel === 'Today')>Today</option>
+                    <option @selected($activeLabel === 'Day')>Day</option>
                     <option @selected($activeLabel === 'Weekly')>Weekly</option>
                     <option @selected($activeLabel === 'Monthly')>Monthly</option>
                     <option @selected($activeLabel === 'Yearly')>Yearly</option>
@@ -379,7 +379,7 @@
           loadChart(widgetId, chartType, baseUrl, null);
 
           // ── period filter change (bar widgets only) ───────────────────────
-          var periodMap = { 'Today': 'day', 'Weekly': 'week', 'Monthly': 'month', 'Yearly': 'year' };
+          var periodMap = { 'Day': 'day', 'Weekly': 'week', 'Monthly': 'month', 'Yearly': 'year' };
           var sel = document.getElementById('bar-filter-{{ $widget->id }}');
           if (sel) {
             sel.addEventListener('change', function () {

@@ -166,6 +166,12 @@ class DashboardWidgetService
         }
         $query = $this->applyHierarchyFilter($query, $user, $visibleUserIds);
         $groupBy = $groupBy ?? $widget->group_by ?? 'month';
+        
+        if ($groupBy === 'day') {
+            $query->whereYear('created_at', date('Y'))
+                  ->whereMonth('created_at', date('m'));
+        }
+
         $aggExpr = $this->aggregateExpression($widget);
         $groups  = [
             'day' => [
